@@ -122,7 +122,11 @@ countdown n = "Ready!" ++ cdHelper n [' '] ++ "Liftoff!"
 -- Hint: remember the mod function!
 
 smallestDivisor :: Integer -> Integer
-smallestDivisor = todo
+smallestDivisor n 
+    | n <= 0 = n
+    | otherwise = go 2
+    where go sn = if mod n sn == 0 then sn else go (sn+1)
+
 
 ------------------------------------------------------------------------------
 -- Ex 7: implement a function isPrime that checks if the given number
@@ -131,7 +135,9 @@ smallestDivisor = todo
 -- Ps. 0 and 1 are not prime numbers
 
 isPrime :: Integer -> Bool
-isPrime = todo
+isPrime n 
+    | n <= 1 = False
+    | otherwise = n == smallestDivisor n
 
 ------------------------------------------------------------------------------
 -- Ex 8: implement a function biggestPrimeAtMost that returns the
@@ -146,4 +152,5 @@ isPrime = todo
 --   biggestPrimeAtMost 10 ==> 7
 
 biggestPrimeAtMost :: Integer -> Integer
-biggestPrimeAtMost = todo
+biggestPrimeAtMost n = if isPrime n then n else biggestPrimeAtMost (n - 1)
+
