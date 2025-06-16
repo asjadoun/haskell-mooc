@@ -28,7 +28,9 @@ import Data.List
 --  maxBy head   [1,2,3] [4,5]  ==>  [4,5]
 
 maxBy :: (a -> Int) -> a -> a -> a
-maxBy measure a b = todo
+maxBy measure a b 
+    | measure a >= measure b = a
+    | otherwise = b
 
 ------------------------------------------------------------------------------
 -- Ex 2: implement the function mapMaybe that takes a function and a
@@ -40,7 +42,8 @@ maxBy measure a b = todo
 --   mapMaybe length (Just "abc") ==> Just 3
 
 mapMaybe :: (a -> b) -> Maybe a -> Maybe b
-mapMaybe f x = todo
+mapMaybe f (Just x) = Just (f x)
+mapMaybe f _ = Nothing
 
 ------------------------------------------------------------------------------
 -- Ex 3: implement the function mapMaybe2 that works like mapMaybe
@@ -54,7 +57,8 @@ mapMaybe f x = todo
 --   mapMaybe2 div (Just 6) Nothing   ==>  Nothing
 
 mapMaybe2 :: (a -> b -> c) -> Maybe a -> Maybe b -> Maybe c
-mapMaybe2 f x y = todo
+mapMaybe2 f (Just x) (Just y) = Just (f x y)
+mapMaybe2 f _ _ = Nothing
 
 ------------------------------------------------------------------------------
 -- Ex 4: define the functions firstHalf and palindrome so that
@@ -76,9 +80,14 @@ mapMaybe2 f x y = todo
 palindromeHalfs :: [String] -> [String]
 palindromeHalfs xs = map firstHalf (filter palindrome xs)
 
-firstHalf = todo
+firstHalf :: String -> String
+firstHalf s = 
+    if even (length s)
+        then take (div (length s) 2) s
+    else take (div (length s) 2 + 1) s
 
-palindrome = todo
+palindrome :: String -> Bool
+palindrome s = s == reverse s
 
 ------------------------------------------------------------------------------
 -- Ex 5: Implement a function capitalize that takes in a string and
@@ -95,8 +104,14 @@ palindrome = todo
 -- Example:
 --   capitalize "goodbye cruel world" ==> "Goodbye Cruel World"
 
+-- capitalizeFirst :: String -> String
+-- capitalizeFirst w = toUpper (head w) : tail w
+
 capitalize :: String -> String
-capitalize = todo
+capitalize s = unwords (map capitalizeFirst (words s))
+    where
+        capitalizeFirst w = toUpper (head w) : tail w
+
 
 ------------------------------------------------------------------------------
 -- Ex 6: powers k max should return all the powers of k that are less
@@ -112,8 +127,12 @@ capitalize = todo
 --   * k^max > max
 --   * the function takeWhile
 
+pows :: Int -> Int -> Int -> [Int]
+pows acc num max =
+    if acc * num <= max then acc : pows (acc * num) num max else [acc]
+
 powers :: Int -> Int -> [Int]
-powers k max = todo
+powers k max = pows 1 k max
 
 ------------------------------------------------------------------------------
 -- Ex 7: implement a functional while loop. While should be a function
@@ -136,7 +155,8 @@ powers k max = todo
 --     ==> Avvt
 
 while :: (a->Bool) -> (a->a) -> a -> a
-while check update value = todo
+while check update value = 
+    if check value then while check update (update value) else value
 
 ------------------------------------------------------------------------------
 -- Ex 8: another version of a while loop. This time, the check
@@ -156,7 +176,11 @@ while check update value = todo
 -- Hint! Remember the case-of expression from lecture 2.
 
 whileRight :: (a -> Either b a) -> a -> b
-whileRight check x = todo
+whileRight check x = 
+    case check x of
+        Left value -> value
+        Right value -> whileRight check value
+
 
 -- for the whileRight examples:
 -- step k x doubles x if it's less than k
@@ -179,8 +203,13 @@ bomb x = Right (x-1)
 --
 -- Hint! This is a great use for list comprehensions
 
+join :: (String, String) -> String
+join (x, y) = x ++ y
+
 joinToLength :: Int -> [String] -> [String]
-joinToLength = todo
+joinToLength n xs = filter (\s -> length s == n) (map join xy)
+    where
+        xy = [(x, y) | x <- xs, y <- xs]
 
 ------------------------------------------------------------------------------
 -- Ex 10: implement the operator +|+ that returns a list with the first
