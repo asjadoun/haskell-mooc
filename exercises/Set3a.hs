@@ -28,7 +28,7 @@ import Data.List
 --  maxBy head   [1,2,3] [4,5]  ==>  [4,5]
 
 maxBy :: (a -> Int) -> a -> a -> a
-maxBy measure a b 
+maxBy measure a b
     | measure a >= measure b = a
     | otherwise = b
 
@@ -81,7 +81,7 @@ palindromeHalfs :: [String] -> [String]
 palindromeHalfs xs = map firstHalf (filter palindrome xs)
 
 firstHalf :: String -> String
-firstHalf s = 
+firstHalf s =
     if even (length s)
         then take (div (length s) 2) s
     else take (div (length s) 2 + 1) s
@@ -155,7 +155,7 @@ powers k max = pows 1 k max
 --     ==> Avvt
 
 while :: (a->Bool) -> (a->a) -> a -> a
-while check update value = 
+while check update value =
     if check value then while check update (update value) else value
 
 ------------------------------------------------------------------------------
@@ -176,7 +176,7 @@ while check update value =
 -- Hint! Remember the case-of expression from lecture 2.
 
 whileRight :: (a -> Either b a) -> a -> b
-whileRight check x = 
+whileRight check x =
     case check x of
         Left value -> value
         Right value -> whileRight check value
@@ -207,9 +207,17 @@ join :: (String, String) -> String
 join (x, y) = x ++ y
 
 joinToLength :: Int -> [String] -> [String]
+-- Op#1
 joinToLength n xs = filter (\s -> length s == n) (map join xy)
     where
         xy = [(x, y) | x <- xs, y <- xs]
+-- Op#2
+-- joinToLength n xs = do
+--     x <- xs
+--     y <- xs
+--     let xy = x ++ y
+--     guard (length xy == n)
+--     return xy
 
 ------------------------------------------------------------------------------
 -- Ex 10: implement the operator +|+ that returns a list with the first
@@ -223,6 +231,17 @@ joinToLength n xs = filter (\s -> length s == n) (map join xy)
 --   [] +|+ [True]        ==> [True]
 --   [] +|+ []            ==> []
 
+-- (+|+) :: [String] -> [String] -> [String]
+-- (+|+) [] [] = []
+-- (+|+) [] (y:_) = [y]
+-- (+|+) (x:_) [] = [x]
+-- (+|+) (x:_) (y:_) = [x,y]
+
+-- (+|+) :: [String] -> [String] -> [String]
+-- ([])     +|+ ([])     = []
+-- ([])     +|+ (y:ys)   = [y]
+-- (x:xs )  +|+ ([])     = [x]
+-- (x:xs)   +|+ (y:ys)   = [x, y]
 
 ------------------------------------------------------------------------------
 -- Ex 11: remember the lectureParticipants example from Lecture 2? We
@@ -239,7 +258,17 @@ joinToLength n xs = filter (\s -> length s == n) (map join xy)
 --   sumRights [Left "bad!", Left "missing"]         ==>  0
 
 sumRights :: [Either a Int] -> Int
-sumRights = todo
+
+--OP#1
+-- sumRights [] = 0
+-- sumRights (x : xs) = sumR x + sumRights xs
+
+--OP#2
+sumRights xs = sum (map sumR xs)
+
+sumR :: Either a Int -> Int
+sumR (Right n) = n
+sumR (Left s) = 0
 
 ------------------------------------------------------------------------------
 -- Ex 12: recall the binary function composition operation
@@ -255,8 +284,12 @@ sumRights = todo
 --   multiCompose [(3*), (2^), (+1)] 0 ==> 6
 --   multiCompose [(+1), (2^), (3*)] 0 ==> 2
 
-multiCompose fs = todo
+multiCompose :: [a -> a] -> a -> a
+-- multiCompose fs x = foldl (\acc f -> f acc) x (reverse fs)
+-- multiCompose fs = foldr (.) id fs
 
+multiCompose [] x = x
+multiCompose (f : fs) x = f (multiCompose fs x)
 ------------------------------------------------------------------------------
 -- Ex 13: let's consider another way to compose multiple functions. Given
 -- some function f, a list of functions gs, and some value x, define
@@ -276,7 +309,9 @@ multiCompose fs = todo
 --   multiApp id [head, (!!2), last] "axbxc" ==> ['a','b','c'] i.e. "abc"
 --   multiApp sum [head, (!!2), last] [1,9,2,9,3] ==> 6
 
-multiApp = todo
+multiApp :: ([b] -> c) -> [a -> b] -> a -> c
+-- multiApp f gs x = f (map ($x ) gs)
+multiApp f gs x =  f (map (\g -> g x) gs)
 
 ------------------------------------------------------------------------------
 -- Ex 14: in this exercise you get to implement an interpreter for a
@@ -311,4 +346,13 @@ multiApp = todo
 -- function, the surprise won't work. See section 3.8 in the material.
 
 interpreter :: [String] -> [String]
-interpreter commands = todo
+interpreter = go (0, 0)
+    where
+        go _ [] = []
+        go (x, y) ("right" :cmds) = go (x+1, y) cmds
+        go (x, y) ("left"  :cmds) = go (x-1, y) cmds
+        go (x, y) ("up"    :cmds) = go (x, y+1) cmds
+        go (x, y) ("down"  :cmds) = go (x, y-1) cmds
+        go (x, y) ("printX":cmds) = show x : go (x, y) cmds
+        go (x, y) ("printY":cmds) = show y : go (x, y) cmds
+        go (x, y) (_:cmds)        = go (x,   y) cmds
