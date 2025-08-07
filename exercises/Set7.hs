@@ -4,7 +4,7 @@ module Set7 where
 
 import Mooc.Todo
 import Data.List
-import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty ( NonEmpty((:|)) )
 import Data.Monoid
 import Data.Semigroup
 
@@ -97,11 +97,48 @@ add v set@(Set xs)
 
 data Event = AddEggs | AddFlour | AddSugar | Mix | Bake
   deriving (Eq,Show)
+data State
+  = Start
+  | AddedEggs
+  | AddedEggsFlourNoSugar
+  | AddedEggsSugarNoFlour
+  | AddedFlourSugarBoth
+  | Mixed
+  | Finished
+  | Error
+  deriving (Eq, Show)
 
-data State = Start | Error | Finished
-  deriving (Eq,Show)
+step :: State -> Event -> State
+-- Initial step
+step Start AddEggs = AddedEggs
+step Start _        = Error
 
-step = todo
+-- After eggs
+step AddedEggs AddFlour = AddedEggsFlourNoSugar
+step AddedEggs AddSugar = AddedEggsSugarNoFlour
+step AddedEggs _        = Error
+
+-- After eggs + flour
+step AddedEggsFlourNoSugar AddSugar = AddedFlourSugarBoth
+step AddedEggsFlourNoSugar _        = Error
+
+-- After eggs + sugar
+step AddedEggsSugarNoFlour AddFlour = AddedFlourSugarBoth
+step AddedEggsSugarNoFlour _        = Error
+
+-- After both flour and sugar
+step AddedFlourSugarBoth Mix = Mixed
+step AddedFlourSugarBoth _   = Error
+
+-- After mixing
+step Mixed Bake = Finished
+step Mixed _    = Error
+
+-- Terminal state
+step Finished _ = Finished
+
+-- Error state
+step Error _ = Error
 
 -- do not edit this
 bake :: [Event] -> State
@@ -121,7 +158,11 @@ bake events = go Start events
 --   average (1.0 :| [2.0,3.0])  ==>  2.0
 
 average :: Fractional a => NonEmpty a -> a
-average = todo
+average xs =
+  let
+    count = length xs
+    sum' = sum xs
+  in sum' / fromIntegral count
 
 ------------------------------------------------------------------------------
 -- Ex 5: reverse a NonEmpty list.
