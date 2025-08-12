@@ -170,7 +170,10 @@ average xs =
 -- PS. The Data.List.NonEmpty type has been imported for you
 
 reverseNonEmpty :: NonEmpty a -> NonEmpty a
-reverseNonEmpty = todo
+reverseNonEmpty (x:|xs)= case reverse xs++[x] of
+  (y:ys) -> y :| ys
+  [] -> x :| []
+
 
 ------------------------------------------------------------------------------
 -- Ex 6: implement Semigroup instances for the Distance, Time and
@@ -182,6 +185,14 @@ reverseNonEmpty = todo
 -- velocity (Distance 50 <> Distance 10) (Time 1 <> Time 2)
 --    ==> Velocity 20
 
+instance Semigroup Distance where
+  (<>) (Distance a) (Distance b) = Distance (a+b)
+
+instance Semigroup Time where
+  (<>) (Time a) (Time b) = Time (a+b)
+
+instance Semigroup Velocity where
+  (<>) (Velocity a) (Velocity b) = Velocity (a+b)
 
 ------------------------------------------------------------------------------
 -- Ex 7: implement a Monoid instance for the Set type from exercise 2.
