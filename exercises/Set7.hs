@@ -7,6 +7,7 @@ import Data.List
 import Data.List.NonEmpty ( NonEmpty((:|)) )
 import Data.Monoid
 import Data.Semigroup
+import Distribution.Version (VersionRangeF(OrLaterVersionF))
 
 ------------------------------------------------------------------------------
 -- Ex 1: you'll find below the types Time, Distance and Velocity,
@@ -202,6 +203,12 @@ instance Semigroup Velocity where
 --
 -- What are the class constraints for the instances?
 
+instance Ord a => Semigroup (Set a) where
+  (<>) (Set xs) (Set ys) = foldr add (Set xs) ys
+
+instance Ord a => Monoid (Set a) where
+  mempty = emptySet
+
 
 ------------------------------------------------------------------------------
 -- Ex 8: below you'll find two different ways of representing
@@ -224,29 +231,41 @@ instance Semigroup Velocity where
 
 data Operation1 = Add1 Int Int
                 | Subtract1 Int Int
+                | Multiply1 Int Int
   deriving Show
 
 compute1 :: Operation1 -> Int
 compute1 (Add1 i j) = i+j
 compute1 (Subtract1 i j) = i-j
+compute1 (Multiply1 i j) = i*j
 
 show1 :: Operation1 -> String
-show1 = todo
+show1 (Add1 a b) = show a ++"+"++ show b
+show1 (Subtract1 a b) = show a ++"-"++ show b
+show1 (Multiply1 a b) = show a ++"*"++ show b
 
 data Add2 = Add2 Int Int
   deriving Show
 data Subtract2 = Subtract2 Int Int
   deriving Show
+data Multiply2 = Multiply2 Int Int
+  deriving Show
 
 class Operation2 op where
   compute2 :: op -> Int
+  show2 :: op -> String
 
 instance Operation2 Add2 where
   compute2 (Add2 i j) = i+j
+  show2 (Add2 a b) = show a ++"+"++ show b
 
 instance Operation2 Subtract2 where
   compute2 (Subtract2 i j) = i-j
+  show2 (Subtract2 a b) = show a ++"-"++ show b
 
+instance Operation2 Multiply2 where
+  compute2 (Multiply2 i j) = i*j
+  show2 (Multiply2 a b) = show a ++"*"++ show b
 
 ------------------------------------------------------------------------------
 -- Ex 9: validating passwords. Below you'll find a type
@@ -275,8 +294,14 @@ data PasswordRequirement =
   deriving Show
 
 passwordAllowed :: String -> PasswordRequirement -> Bool
-passwordAllowed = todo
-
+passwordAllowed s (MinimumLength n) = length s >= n
+passwordAllowed s (ContainsSome []) = False
+passwordAllowed s (ContainsSome (x:xs)) = any (==x) s || passwordAllowed s (ContainsSome xs)
+  -- | any (==x) s = True
+  -- | otherwise = passwordAllowed s (ContainsSome xs)
+passwordAllowed s (DoesNotContain s2) = not (passwordAllowed s (ContainsSome s2))
+passwordAllowed s (And req1 req2) = (passwordAllowed s req1) && (passwordAllowed s req2)
+passwordAllowed s (Or req1 req2) = (passwordAllowed s req1) || (passwordAllowed s req2)
 ------------------------------------------------------------------------------
 -- Ex 10: a DSL for simple arithmetic expressions with addition and
 -- multiplication. Define the type Arithmetic so that it can express
@@ -297,17 +322,20 @@ passwordAllowed = todo
 --     ==> "(3*(1+1))"
 --
 
-data Arithmetic = Todo
+data Arithmetic = Literal Integer | Operation String Arithmetic Arithmetic
   deriving Show
 
 literal :: Integer -> Arithmetic
-literal = todo
+literal = Literal
 
 operation :: String -> Arithmetic -> Arithmetic -> Arithmetic
-operation = todo
+operation = Operation
 
 evaluate :: Arithmetic -> Integer
-evaluate = todo
+evaluate (Literal n) = n
+evaluate (Operation "+" a1 a2) = evaluate a1 + evaluate a2
+evaluate (Operation "*" a1 a2) = evaluate a1 * evaluate a2
 
 render :: Arithmetic -> String
-render = todo
+render (Literal n) = show n
+render (Operation op a1 a2) = "(" ++ render a1 ++ op ++ render a2 ++ ")"
