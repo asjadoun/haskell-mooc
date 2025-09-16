@@ -47,10 +47,10 @@ type Col   = Int
 type Coord = (Row, Col)
 
 nextRow :: Coord -> Coord
-nextRow (i,j) = todo
+nextRow (i,j) = (i+1, 1)
 
 nextCol :: Coord -> Coord
-nextCol (i,j) = todo
+nextCol (i,j) = (i, j+1)
 
 --------------------------------------------------------------------------------
 -- Ex 2: Implement the function prettyPrint that, given the size of
@@ -103,7 +103,19 @@ nextCol (i,j) = todo
 type Size = Int
 
 prettyPrint :: Size -> [Coord] -> String
-prettyPrint = todo
+-- OP#1
+prettyPrint n cs = unlines [[ cell r c | c <- [1..n]] | r <- [1..n]]
+    where
+        cell r c = if (r,c) `elem` cs then 'Q' else '.'
+
+-- OP#2
+-- prettyPrint n cs = foldr paint "" [1..n]
+--     where
+--         paint r acc = (foldr col "" [1..n]) ++ "\n" ++ acc
+--             where
+--                 col c acc
+--                     | (r,c) `elem` cs = "Q" ++ acc
+--                     | otherwise = "." ++ acc
 
 --------------------------------------------------------------------------------
 -- Ex 3: The task in this exercise is to define the relations sameRow, sameCol,
@@ -127,16 +139,16 @@ prettyPrint = todo
 --   sameAntidiag (500,5) (5,500) ==> True
 
 sameRow :: Coord -> Coord -> Bool
-sameRow (i,j) (k,l) = todo
+sameRow (i,j) (k,l) = i==k
 
 sameCol :: Coord -> Coord -> Bool
-sameCol (i,j) (k,l) = todo
+sameCol (i,j) (k,l) = j==l
 
 sameDiag :: Coord -> Coord -> Bool
-sameDiag (i,j) (k,l) = todo
+sameDiag (i,j) (k,l) = (i-j) == (k-l)
 
 sameAntidiag :: Coord -> Coord -> Bool
-sameAntidiag (i,j) (k,l) = todo
+sameAntidiag (i,j) (k,l) = (i+j) == (k+l)
 
 --------------------------------------------------------------------------------
 -- Ex 4: In chess, a queen may capture another piece in the same row, column,
@@ -189,9 +201,16 @@ sameAntidiag (i,j) (k,l) = todo
 
 type Candidate = Coord
 type Stack     = [Coord]
+f::[Coord -> Coord -> Bool]
+f = [sameRow,sameCol, sameDiag, sameAntidiag]
 
 danger :: Candidate -> Stack -> Bool
-danger = todo
+danger c1 = foldr check False
+    where
+        check c2 acc = acc  || sameRow c1 c2
+                            || sameCol c1 c2
+                            || sameDiag c1 c2
+                            || sameAntidiag c1 c2
 
 --------------------------------------------------------------------------------
 -- Ex 5: In this exercise, the task is to write a modified version of
@@ -226,8 +245,12 @@ danger = todo
 -- solution to this version. Any working solution is okay in this exercise.)
 
 prettyPrint2 :: Size -> Stack -> String
-prettyPrint2 = todo
-
+prettyPrint2 n qs = unlines [[ cell r c | c <- [1..n]] | r <- [1..n]]
+    where
+        cell r c
+            | (r,c) `elem` qs = 'Q'
+            | danger (r, c) qs = '#'
+            | otherwise = '.'
 --------------------------------------------------------------------------------
 -- Ex 6: Now that we can check if a piece can be safely placed into a square in
 -- the chessboard, it's time to write the first piece of the actual solution.
@@ -270,9 +293,39 @@ prettyPrint2 = todo
 --     ####Q###
 --     Q#######
 
-fixFirst :: Size -> Stack -> Maybe Stack
-fixFirst n s = todo
+-- Stack structure: The queen "on top" is the first element (r,c) in the list
 
+-- Check current position: 
+-- If the queen is already safe (not in danger from the rest of the queens), return unchanged
+
+-- Move right: 
+-- If in danger, try moving to (r,c+1), then (r,c+2), etc.
+
+-- Boundary check: 
+-- If we go beyond column n, return Nothing
+
+-- Safety check: 
+-- Use the danger function to check if the new position conflicts with other queens
+
+-- Examples walkthrough:
+
+-- fixFirst 5 [(1,1)] → Queen at (1,1) is safe, return Just [(1,1)]
+
+-- fixFirst 5 [(1,1),(3,3)] → Queen at (1,1) conflicts with (3,3), try (1,2) which is safe, return Just [(1,2),(3,3)]
+
+-- fixFirst 5 [(1,6)] → Queen already outside board, return Nothing
+
+fixFirst :: Size -> Stack -> Maybe Stack
+fixFirst _ [] = Nothing
+fixFirst n ((r,c):rest)
+  | c > n = Nothing  -- queen already outside board
+  | not (danger (r,c) rest) = Just ((r,c):rest)  -- already safe
+  | otherwise = tryMove (r,c+1) rest
+  where
+    tryMove (r,c) rest
+      | c > n = Nothing  -- no safe spot in this row
+      | danger (r,c) rest = tryMove (r,c+1) rest  -- try next column
+      | otherwise = Just ((r,c):rest)  -- found safe spot
 --------------------------------------------------------------------------------
 -- Ex 7: We need two helper functions for stack management.
 --
@@ -293,10 +346,13 @@ fixFirst n s = todo
 -- Hint: Remember nextRow and nextCol? Use them!
 
 continue :: Stack -> Stack
-continue s = todo
+continue [] = []
+continue s@((r,c):rest) = (r+1,1):s
 
 backtrack :: Stack -> Stack
-backtrack s = todo
+backtrack [] = []
+backtrack [_] = []
+backtrack (top:(r,c):rest) = (r,c+1):rest
 
 --------------------------------------------------------------------------------
 -- Ex 8: Let's take a step. Our algorithm solves the problem (in a
@@ -365,7 +421,9 @@ backtrack s = todo
 --     step 8 [(6,1),(5,4),(4,2),(3,5),(2,3),(1,1)] ==> [(5,5),(4,2),(3,5),(2,3),(1,1)]
 
 step :: Size -> Stack -> Stack
-step = todo
+step n s = case fixFirst n s of
+    Just fs -> continue fs  -- Add new candidate to next row
+    Nothing -> backtrack s  -- Remove top queen and adjust previous
 
 --------------------------------------------------------------------------------
 -- Ex 9: Let's solve our puzzle! The function finish takes a partial
@@ -380,7 +438,13 @@ step = todo
 -- solve the n queens problem.
 
 finish :: Size -> Stack -> Stack
-finish = todo
+finish n s =
+    let ns = step n s
+    in if length ns > n then tail ns else finish n ns
 
 solve :: Size -> Stack
 solve n = finish n [(1,1)]
+
+solve2 :: Size -> String
+solve2 n = prettyPrint2 n (solve n)
+
