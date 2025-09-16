@@ -438,9 +438,14 @@ step n s = case fixFirst n s of
 -- solve the n queens problem.
 
 finish :: Size -> Stack -> Stack
-finish n s =
-    let ns = step n s
-    in if length ns > n then tail ns else finish n ns
+finish n s
+  | length s == n+1 = tail s  -- found complete solution
+  | null s = []        -- no solution exists (backtracked to empty stack)
+  | otherwise = 
+      let ns = step n s
+      in if length ns > n 
+         then tail ns        -- step added (n+1)th queen, so s was complete
+         else finish n ns
 
 solve :: Size -> Stack
 solve n = finish n [(1,1)]
