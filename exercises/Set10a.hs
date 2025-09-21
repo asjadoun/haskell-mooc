@@ -16,8 +16,16 @@ import Mooc.Todo
 --   take 10 (doublify [0..])  ==>  [0,0,1,1,2,2,3,3,4,4]
 
 doublify :: [a] -> [a]
-doublify [] = []
-doublify (x:xs) = x:x: doublify xs
+-- doublify [] = []
+-- doublify (x:xs) = x:x:doublify xs
+
+-- doublify xs = sort (xs++xs)
+
+-- doublify = foldr (\x acc -> x:x:acc) []
+
+doublify xs = concat (transpose [xs, xs])
+
+-- doublify = concatMap (\x -> [x, x])
 
 ------------------------------------------------------------------------------
 -- Ex 2: Implement the function interleave that takes two lists and
@@ -38,9 +46,11 @@ doublify (x:xs) = x:x: doublify xs
 --   take 10 (interleave [1..] (repeat 0)) ==> [1,0,2,0,3,0,4,0,5,0]
 
 interleave :: [a] -> [a] -> [a]
-interleave [] ys = ys
-interleave xs [] = xs
-interleave (x:xs) (y:ys) = x:y: interleave xs ys
+-- interleave [] ys = ys
+-- interleave xs [] = xs
+-- interleave (x:xs) (y:ys) = x:y: interleave xs ys
+
+interleave xs ys = concat (transpose [xs, ys])
 
 ------------------------------------------------------------------------------
 -- Ex 3: Deal out cards. Given a list of players (strings), and a list
@@ -79,16 +89,30 @@ deal players cards = go cards (cycle players)
 --   averages [3,2,1] ==> [3.0,2.5,2.0]
 --   take 10 (averages [1..]) ==> [1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5]
 
-
+-- scanl :: (b -> a -> b) -> b -> [a] -> [b]
 
 averages :: [Double] -> [Double]
--- averages xs = zipWith (\x n -> x/n) (scanl1 (+) xs) [1..]
-averages [] = []
-averages (x:xs) = go x 1 xs
-    where
-        go sum count [] = [sum/count]
-        go sum count (x:xs) = (sum/count) : go (sum+x) (count+1) xs
+averages xs = zipWith (/) (scanl1 (+) xs) [1..]
+-- Op#1
+-- averages [] = []
+-- averages (x:xs) = go x 1 xs
+--     where
+--         go sum count [] = [sum/count]
+--         go sum count (x:xs) = (sum/count) : go (sum+x) (count+1) xs
 
+-- OP#2
+-- averages xs = map (\(s,c) -> s/c) (zip (scanl1 (+) xs) [1..])
+-- OP#3 -- only works on finite list
+-- averages xs = 
+--     let (_,_,avgs) = foldl' (\acc x -> (f x acc)) (0.0,0.0,[]) xs
+--     in reverse avgs
+
+-- f :: Double -> (Double, Double, [Double]) -> (Double, Double, [Double])
+-- f n (t,c,xs) = 
+--     let newTotal = n+t
+--         newCounter = c+1
+--         newAvg = newTotal / newCounter
+--     in (newTotal, newCounter, newAvg:xs)
 ------------------------------------------------------------------------------
 -- Ex 5: Given two lists, xs and ys, and an element z, generate an
 -- infinite list that consists of
