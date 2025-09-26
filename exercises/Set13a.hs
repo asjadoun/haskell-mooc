@@ -120,7 +120,7 @@ winner scores player1 player2 =
 --  selectSum [0..10] [4,6,9,20]
 --    Nothing
 safeIndex :: [a] -> Int -> Maybe a
-safeIndex xs i = 
+safeIndex xs i =
   if i >= 0 && i < length xs then Just (xs !! i) else Nothing
 
 selectSum :: Num a => [a] -> [Int] -> Maybe a
@@ -166,7 +166,10 @@ instance Applicative Logger where
   (<*>) = ap
 
 countAndLog :: Show a => (a -> Bool) -> [a] -> Logger Int
-countAndLog = todo
+countAndLog p xs = do
+  let filtered = filter p xs
+  mapM_ (\x -> msg (show x)) filtered
+  return (length filtered)
 
 ------------------------------------------------------------------------------
 -- Ex 5: You can find the Bank and BankOp code from the course
@@ -183,7 +186,8 @@ exampleBank :: Bank
 exampleBank = (Bank (Map.fromList [("harry",10),("cedric",7),("ginny",1)]))
 
 balance :: String -> BankOp Int
-balance accountName = todo
+balance accountName = 
+  BankOp (\(Bank accounts) -> (Map.findWithDefault 0 accountName accounts, Bank accounts))
 
 ------------------------------------------------------------------------------
 -- Ex 6: Using the operations balance, withdrawOp and depositOp, and
@@ -201,7 +205,8 @@ balance accountName = todo
 --     ==> ((),Bank (fromList [("cedric",7),("ginny",1),("harry",10)]))
 
 rob :: String -> String -> BankOp ()
-rob from to = todo
+rob from to = 
+  balance from +> \amount -> withdrawOp from amount +>> depositOp to amount
 
 ------------------------------------------------------------------------------
 -- Ex 7: using the State monad, write the operation `update` that first
@@ -213,7 +218,7 @@ rob from to = todo
 --    ==> ((),7)
 
 update :: State Int ()
-update = todo
+update = state (\s -> ((), (s*2)+1))
 
 ------------------------------------------------------------------------------
 -- Ex 8: Checking that parentheses are balanced with the State monad.
@@ -241,7 +246,8 @@ update = todo
 --   parensMatch "(()))("      ==> False
 
 paren :: Char -> State Int ()
-paren = todo
+paren '(' = state (\s -> ((), if s == -1 then -1 else s+1))
+paren ')' = state (\s -> ((), if s == -1 then -1 else max (-1) (s-1)))
 
 parensMatch :: String -> Bool
 parensMatch s = count == 0
@@ -272,7 +278,12 @@ parensMatch s = count == 0
 -- PS. The order of the list of pairs doesn't matter
 
 count :: Eq a => a -> State [(a,Int)] ()
-count x = todo
+count x = state (\pairs -> ((), updateCounts x pairs))
+  where
+    updateCounts x [] = [(x,1)]
+    updateCounts x ((y,n):rest)
+      | x == y = (y,n+1):rest
+      | otherwise = (y,n):updateCounts x rest 
 
 ------------------------------------------------------------------------------
 -- Ex 10: Implement the operation occurrences, which
@@ -294,4 +305,4 @@ count x = todo
 --    ==> (4,[(2,1),(3,1),(4,1),(7,1)])
 
 occurrences :: (Eq a) => [a] -> State [(a,Int)] Int
-occurrences xs = todo
+occurrences xs = mapM_ count xs >> get >>= \pairs -> return (length pairs)
