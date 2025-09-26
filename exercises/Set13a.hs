@@ -47,19 +47,30 @@ readNames s =
 -- (NB! There are obviously other corner cases like the inputs " " and
 -- "a b c", but you don't need to worry about those here)
 split :: String -> Maybe (String,String)
-split = todo
+split s = go (words s)
+  where
+    go [] = Nothing
+    go [x] = Nothing
+    go (x:y:_) = Just (x,y)
 
 -- checkNumber should take a pair of two strings and return them
 -- unchanged if they don't contain numbers. Otherwise Nothing is
 -- returned.
 checkNumber :: (String, String) -> Maybe (String, String)
-checkNumber = todo
+checkNumber (s1, s2) =
+  if not (check s1) && not (check s2) then Just (s1, s2) else Nothing
+  where
+    check = any isDigit
+
 
 -- checkCapitals should take a pair of two strings and return them
 -- unchanged if both start with a capital letter. Otherwise Nothing is
 -- returned.
 checkCapitals :: (String, String) -> Maybe (String, String)
-checkCapitals (for,sur) = todo
+checkCapitals ([],_) = Nothing
+checkCapitals (_,[]) = Nothing
+checkCapitals (s1@(x:xs),s2@(y:ys)) =
+  if isUpper x && isUpper y then Just (s1,s2) else Nothing
 
 ------------------------------------------------------------------------------
 -- Ex 2: Given a list of players and their scores (as [(String,Int)]),
@@ -86,7 +97,13 @@ checkCapitals (for,sur) = todo
 --     ==> Just "a"
 
 winner :: [(String,Int)] -> String -> String -> Maybe String
-winner scores player1 player2 = todo
+winner scores player1 player2 =
+  go (lookup player1 scores) (lookup player2 scores)
+  where
+    go Nothing _ = Nothing
+    go _ Nothing = Nothing
+    go (Just s1) (Just s2) =
+      if s1 >= s2 then Just player1 else Just player2
 
 ------------------------------------------------------------------------------
 -- Ex 3: given a list of indices and a list of values, return the sum
@@ -102,9 +119,20 @@ winner scores player1 player2 = todo
 --    Just 19
 --  selectSum [0..10] [4,6,9,20]
 --    Nothing
+safeIndex :: [a] -> Int -> Maybe a
+safeIndex xs i = 
+  if i >= 0 && i < length xs then Just (xs !! i) else Nothing
 
 selectSum :: Num a => [a] -> [Int] -> Maybe a
-selectSum xs is = todo
+selectSum xs is = do
+  values <- mapM (\i -> safeIndex xs i) is
+  return (sum values)
+-- OR
+-- selectSum xs [] = Just 0
+-- selectSum xs (i:is) = 
+--   safeIndex xs i >>= \v -> 
+--   selectSum xs is >>= \rest -> 
+--   Just (v + rest)
 
 ------------------------------------------------------------------------------
 -- Ex 4: Here is the Logger monad from the course material. Implement
