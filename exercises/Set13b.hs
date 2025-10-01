@@ -42,7 +42,9 @@ test = do
   return (x<10)
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
-ifM opBool opThen opElse = todo
+ifM opBool opThen opElse = do
+  bool <- opBool
+  if bool then opThen else opElse
 
 ------------------------------------------------------------------------------
 -- Ex 2: the standard library function Control.Monad.mapM defines a
@@ -84,7 +86,15 @@ perhapsIncrement True x = modify (+x)
 perhapsIncrement False _ = return ()
 
 mapM2 :: Monad m => (a -> b -> m c) -> [a] -> [b] -> m [c]
-mapM2 op xs ys = todo
+mapM2 _ [] _ = return []
+mapM2 _ _ [] = return []
+mapM2 op (x:xs) (y:ys) = 
+  op x y >>= \c -> mapM2 op xs ys >>= \cs -> return (c:cs)
+-- OR with "do" notation
+-- mapM2 op (x:xs) (y:ys) = do
+--   c <- op x y
+--   cs <- mapM2 op xs ys
+--   return (c:cs)
 
 ------------------------------------------------------------------------------
 -- Ex 3: Finding paths.
@@ -165,7 +175,14 @@ path maze place1 place2 = todo
 -- PS. The tests don't care about the order of results.
 
 findSum2 :: [Int] -> [Int] -> [(Int,Int,Int)]
-findSum2 ks ns = todo
+findSum2 ks ns = do
+  x <- ks
+  y <- ks
+  let sumXY = x + y
+  guard(any (==sumXY) ns)
+  return (x,y,sumXY)
+-- OR
+  -- map (\(a,b) -> (a,b,a+b)) (filter (\(a,b) -> (any (==(a+b)) ns)) [(x,y) | x <- ks, y <- ks])
 
 ------------------------------------------------------------------------------
 -- Ex 5: compute all possible sums of elements from the given
@@ -185,8 +202,10 @@ findSum2 ks ns = todo
 --   allSums [1,2,4]
 --     ==> [7,3,5,1,6,2,4,0]
 
-allSums :: [Int] -> [Int]
-allSums xs = todo
+allSums :: [Int] -> [[Int]]
+allSums xs = do
+  choices <- mapM (\x -> [0,x]) xs
+  return (choices)
 
 ------------------------------------------------------------------------------
 -- Ex 6: the standard library defines the function
