@@ -52,9 +52,23 @@ statements = todo
 --  calculator "double" "7"   ==> Just 14
 --  calculator "doubl" "7"    ==> Nothing
 --  calculator "double" "7x"  ==> Nothing
+parseInt :: String -> Maybe Int
+parseInt s = readMaybe s
+
+parseOp :: String -> Maybe (Int -> Int)
+parseOp "negate" = Just (*(-1))
+parseOp "double" = Just (*2)
+parseOp _        = Nothing
+
+-- (<*>) :: f (a -> b) -> f a -> f b
+-- liftA2 :: (a -> b -> c) -> f a -> f b -> f c
 
 calculator :: String -> String -> Maybe Int
-calculator = todo
+-- calculator opStr numStr = liftA2 (\f x -> f x) (parseOp opStr) (parseInt numStr)
+-- OR
+-- calculator opStr numStr = liftA2 ($) (parseOp opStr) (parseInt numStr)
+-- OR
+calculator opStr numStr = (<*>) (parseOp opStr) (parseInt numStr)
 
 ------------------------------------------------------------------------------
 -- Ex 4: Safe division. Implement the function validateDiv that
@@ -71,8 +85,12 @@ calculator = todo
 --  validateDiv 0 3 ==> Ok 0
 
 validateDiv :: Int -> Int -> Validation Int
-validateDiv = todo
-
+-- validateDiv a b = check (b /= 0) "Division by zero!" (a `div` b)
+-- OR
+validateDiv a b = liftA2 (\a b -> a `div` b) (pure a) (validateNonZero b)
+  where
+    validateNonZero 0 = invalid "Division by zero!"
+    validateNonZero b = pure b
 ------------------------------------------------------------------------------
 -- Ex 5: Validating street addresses. A street address consists of a
 -- street name, a street number, and a postcode.
@@ -101,7 +119,11 @@ data Address = Address String String String
   deriving (Show,Eq)
 
 validateAddress :: String -> String -> String -> Validation Address
-validateAddress streetName streetNumber postCode = todo
+validateAddress streetName streetNumber postCode = liftA3 (\s n p -> Address s n p) validateStreet validateStreetNum validatePostal
+    where
+      validateStreet = check (length streetName <= 20) "Invalid street name" streetName
+      validateStreetNum = check (all isDigit streetNumber) "Invalid street number" streetNumber
+      validatePostal = check (length postCode == 5 && all isDigit postCode) "Invalid postcode" postCode
 
 ------------------------------------------------------------------------------
 -- Ex 6: Given the names, ages and employment statuses of two
@@ -123,7 +145,8 @@ data Person = Person String Int Bool
 twoPersons :: Applicative f =>
   f String -> f Int -> f Bool -> f String -> f Int -> f Bool
   -> f [Person]
-twoPersons name1 age1 employed1 name2 age2 employed2 = todo
+twoPersons name1 age1 employed1 name2 age2 employed2 = 
+  liftA2 (\p1 p2 -> [p1, p2]) (liftA3 Person name1 age1 employed1) (liftA3 Person name2 age2 employed2)
 
 ------------------------------------------------------------------------------
 -- Ex 7: Validate a String that's either a Bool or an Int. The return
@@ -142,8 +165,17 @@ twoPersons name1 age1 employed1 name2 age2 employed2 = todo
 --  boolOrInt "13.2"    ==> Errors ["Not a Bool","Not an Int"]
 --  boolOrInt "Falseb"  ==> Errors ["Not a Bool","Not an Int"]
 
+-- (<|>) :: f a -> f a -> f a
+
 boolOrInt :: String -> Validation (Either Bool Int)
-boolOrInt = todo
+boolOrInt s = tryBool <|> tryInt
+  where
+    tryBool = case readMaybe s :: Maybe Bool of
+      Just b -> pure (Left b)
+      Nothing -> invalid "Not a Bool"
+    tryInt = case readMaybe s :: Maybe Int of
+      Just i -> pure (Right i)
+      Nothing -> invalid "Not an Int"
 
 ------------------------------------------------------------------------------
 -- Ex 8: Improved phone number validation. Implement the function
@@ -167,7 +199,12 @@ boolOrInt = todo
 --    ==> Errors ["Too long"]
 
 normalizePhone :: String -> Validation String
-normalizePhone = todo
+normalizePhone s = liftA2 const checkLength checkDigits
+  where
+    str = filter (/= ' ') s
+    checkLength = check (length str <= 10) "Too long" str
+    checkDigits = traverse validateChar str *> pure str
+    validateChar c = check (isDigit c) ("Invalid character: " ++ [c]) c
 
 ------------------------------------------------------------------------------
 -- Ex 9: Parsing expressions. The Expression type describes an
