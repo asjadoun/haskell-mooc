@@ -17,7 +17,7 @@ import Text.Read (readMaybe)
 --  sumTwoMaybes Nothing Nothing    ==> Nothing
 
 sumTwoMaybes :: Maybe Int -> Maybe Int -> Maybe Int
-sumTwoMaybes = todo
+sumTwoMaybes optInt1 optInt2 = liftA2 (\a b -> a + b) optInt1 optInt2
 
 ------------------------------------------------------------------------------
 -- Ex 2: Given two lists of words, xs and ys, generate all statements
@@ -36,7 +36,7 @@ sumTwoMaybes = todo
 --         "code is not suffering","code is not life"]
 
 statements :: [String] -> [String] -> [String]
-statements = todo
+statements xs ys = liftA3 (\x isNot y -> x ++ isNot ++ y) xs [" is ", " is not "] ys
 
 ------------------------------------------------------------------------------
 -- Ex 3: A simple calculator with error handling. Given an operation
@@ -248,7 +248,24 @@ data Expression = Plus Arg Arg | Minus Arg Arg
   deriving (Show, Eq)
 
 parseExpression :: String -> Validation Expression
-parseExpression = todo
+parseExpression s = case words s of
+  [x, op, y] -> liftA3 buildExpr (parseArg x) (parseOp op) (parseArg y)
+  _ -> invalid ("Invalid expression: " ++ s)
+  where
+    parseOp "+" = pure Plus
+    parseOp "-" = pure Minus
+    parseOp op = invalid ("Unknown operator: " ++ op)
+    
+    parseArg str = parseNumber str <|> parseVariable str
+    
+    parseNumber str = case readMaybe str of
+      Just n -> pure (Number n)
+      Nothing -> invalid ("Invalid number: " ++ str)
+    
+    parseVariable [c] | isAlpha c = pure (Variable c)
+    parseVariable str = invalid ("Invalid variable: " ++ str)
+    
+    buildExpr arg1 constructor arg2 = constructor arg1 arg2
 
 ------------------------------------------------------------------------------
 -- Ex 10: The Priced T type tracks a value of type T, and a price
@@ -273,11 +290,11 @@ data Priced a = Priced Int a
   deriving (Show, Eq)
 
 instance Functor Priced where
-  fmap = todo
+  fmap f (Priced n x) = Priced n (f x)
 
 instance Applicative Priced where
-  pure = todo
-  liftA2 = todo
+  pure x = Priced 0 x
+  liftA2 f (Priced n1 x) (Priced n2 y) = Priced (n1 + n2) (f x y)
 
 ------------------------------------------------------------------------------
 -- Ex 11: This and the next exercise will use a copy of the
@@ -310,7 +327,9 @@ instance MyApplicative [] where
   myLiftA2 = liftA2
 
 (<#>) :: MyApplicative f => f (a -> b) -> f a -> f b
-f <#> x = todo
+f <#> fa = myLiftA2 (\g y -> g y) f fa
+-- OR
+-- f <#> fa = myLiftA2 ($) f fa
 
 ------------------------------------------------------------------------------
 -- Ex 12: Reimplement fmap using liftA2 and pure. In practical terms,
@@ -327,7 +346,7 @@ f <#> x = todo
 --  myFmap negate [1,2,3]  ==> [-1,-2,-3]
 
 myFmap :: MyApplicative f => (a -> b) -> f a -> f b
-myFmap = todo
+myFmap f fa = myLiftA2 (\g y -> g y) (myPure f) fa
 
 ------------------------------------------------------------------------------
 -- Ex 13: Given a function that returns an Alternative value, and a
@@ -354,7 +373,7 @@ myFmap = todo
 --       ==> Errors ["zero","zero","zero"]
 
 tryAll :: Alternative f => (a -> f b) -> [a] -> f b
-tryAll = todo
+tryAll f xs = foldr (<|>) empty (map f xs)
 
 ------------------------------------------------------------------------------
 -- Ex 14: Here's the type `Both` that expresses the composition of
@@ -379,7 +398,7 @@ newtype Both f g a = Both (f (g a))
   deriving Show
 
 instance (Functor f, Functor g) => Functor (Both f g) where
-  fmap = todo
+  fmap h (Both fga) = Both (fmap (fmap h) fga)
 
 ------------------------------------------------------------------------------
 -- Ex 15: The composition of two Applicatives is also an Applicative!
@@ -407,5 +426,5 @@ instance (Functor f, Functor g) => Functor (Both f g) where
 --              Errors ["fail 1","fail 2"]]
 
 instance (Applicative f, Applicative g) => Applicative (Both f g) where
-  pure = todo
-  liftA2 = todo
+  pure x = Both (pure (pure x))
+  liftA2 h (Both fga) (Both fgb) = Both (liftA2 (liftA2 h) fga fgb)
