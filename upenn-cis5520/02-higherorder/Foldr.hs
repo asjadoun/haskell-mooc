@@ -102,13 +102,16 @@ all1 p (x : xs) = p x && all1 p xs
 Now implement using foldr
 
 -}
+all1' :: (a -> Bool) -> [a] -> Bool
+all1' pred xs = foldr (\x acc -> acc && pred x) True xs
+-- all1' pred = foldr (\x acc -> acc && pred x) True
 
 -- >>> all (>10) ([1 .. 20] :: [Int])
 -- False
 -- >>> all (>0) ([1 .. 20] :: [Int])
 -- True
 all :: (a -> Bool) -> [a] -> Bool
-all p = undefined
+all p = foldr (\x acc -> acc && p x) True
 
 {-
 And trace through an evaluation `all not [True,False]`:
@@ -138,7 +141,10 @@ Now implement using foldr
 -- >>> last ""
 -- Nothing
 last :: [a] -> Maybe a
-last = undefined
+last = foldr (\x acc -> if check acc then Just x else acc) Nothing
+  where
+    check Nothing = True
+    check _       = False
 
 {-
 and trace through the evaluation `last [1,2]`
@@ -152,7 +158,7 @@ of the first list for which the input function returns `True`.
 -}
 
 filter :: (a -> Bool) -> [a] -> [a]
-filter p = undefined
+filter p = foldr (\x acc -> if p x then x:acc else acc) []
 
 -- >>> filter (> 10) [1 .. 20]
 
@@ -182,7 +188,8 @@ Now rewrite this function using 'foldr'
 -}
 
 reverse :: [a] -> [a]
-reverse l = undefined
+-- reverse l = foldr (\x acc -> acc++[x]) [] l
+reverse = foldr (\x acc -> acc++[x]) []
 
 -- >>> reverse "abcd"
 -- "dcba"
@@ -221,7 +228,7 @@ Now rewrite using 'foldr'
 -}
 
 intersperse :: a -> [a] -> [a]
-intersperse = undefined
+intersperse sep = foldr (\x acc -> x:sep:acc) []
 
 -- >>> intersperse ',' "abcde"
 -- "a,b,c,d,e"
@@ -263,7 +270,8 @@ But, you can also define `foldl` in terms of `foldr`. Give it a try.
 -}
 
 foldl :: (b -> a -> b) -> b -> [a] -> b
-foldl f z xs = undefined
+foldl _ z [] = z
+foldl f z (x:xs) = foldl f (f z x) xs
 
 -- >>> foldl (++) "x" ["1", "2", "3"]
 -- "x123"

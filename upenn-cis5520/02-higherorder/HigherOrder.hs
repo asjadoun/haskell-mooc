@@ -41,7 +41,8 @@ Or you can make a list containing the functions
 -}
 
 funs :: [Int -> Int]
-funs = undefined
+-- funs = [plus1, minus1]
+funs = plus1 : minus1 : []
 
 {-
 Taking Functions as Input
@@ -426,7 +427,8 @@ following test passes.
 -}
 
 singleton :: a -> [a]
-singleton = undefined
+-- singleton x = [x]
+singleton x = x : []
 
 -- >>> singleton True
 -- [True]
@@ -540,7 +542,7 @@ a function that starts with `unsafe` doesn't count.)
 -}
 
 impossible :: a
-impossible = undefined
+impossible = impossible
 
 {-
 Because `impossible` has to have *any* type, there is no real value that we
@@ -667,7 +669,8 @@ toUpperString' :: String -> String
 toUpperString' xs = map toUpper xs
 
 shiftPoly' :: XY -> Polygon -> Polygon
-shiftPoly' d = undefined
+-- shiftPoly' d ps = map (\xy -> shiftXY d xy) ps
+shiftPoly' d = map (shiftXY d )
 
 {-
 Much better.  But let's make sure our refactoring didn't break anything!
@@ -711,7 +714,7 @@ We can write this more cleanly with map, of course:
 -}
 
 listIncr' :: [Int] -> [Int]
-listIncr' = undefined
+listIncr' = map (+1)
 
 {-
 Computation Pattern: Folding
@@ -794,7 +797,8 @@ from our list-length function?
 -}
 
 len' :: [a] -> Int
-len' = undefined
+-- len' xs = foldr (\n acc -> acc+1) 0 xs
+len' = foldr (\n acc -> acc+1) 0
 
 {-
 Once you have defined `len` in this way, see if you can trace how it
@@ -814,7 +818,8 @@ factorial 0 = 1
 factorial n = n * factorial (n - 1)
 
 factorial' :: Int -> Int
-factorial' n = undefined
+-- factorial' n = foldr (\n acc -> n*acc) 1 [1..n]
+factorial' n = foldr (*) 1 [1..n]
 
 {-
 OK, one more.  The standard list library function `filter` has this
@@ -839,7 +844,7 @@ So:
 Can we implement filter using foldr?  Sure!
 -}
 
-filter pred = undefined
+filter pred = foldr (\x acc -> if pred x then x:acc else acc) []
 
 {-
 Which is more readable? HOFs or Recursion

@@ -86,8 +86,11 @@ character in our code, (i.e. for punctuation) we should leave it alone.
 -- >>> encodeChar '.'
 -- '.
 encodeChar :: Char -> Char
-encodeChar c = undefined
-
+-- encodeChar c = fromMaybe c (lookup c code)
+encodeChar c = 
+  case lookup c code of
+    Just x -> x
+    Nothing -> c
 {-
 We'll next need a way to encode a whole line of text.  Of course, remembering
 that `String`s are just lists of `Char`s, there is a perfect higher-order
@@ -97,7 +100,7 @@ function in `HigherOrder` that we can use:
 -- >>> encodeLine "abc defgh"
 -- "the quick"
 encodeLine :: String -> String
-encodeLine = undefined
+encodeLine = map encodeChar
 
 {-
 And, if we have a list of lines, we can use the same higher-order function
@@ -107,7 +110,7 @@ to encode all of them.
 -- >>> encodeLines ["abc", "defgh"]
 -- ["the","quick"]
 encodeLines :: [String] -> [String]
-encodeLines = undefined
+encodeLines = map encodeLine
 
 {-
 Finally, we need a function to encode a whole file.  Remember, we want to
@@ -137,7 +140,9 @@ the functions that we already have to encode the entire file.
 -}
 
 encodeContent :: String -> String
-encodeContent = undefined
+-- encodeContent s = unlines (encodeLines (lines s))
+-- encodeContent s = unlines $ encodeLines $ lines s
+encodeContent = unlines . encodeLines . lines 
 
 -- >>> encodeContent "abc\n defgh\n"
 -- " quick\nthe\n"
@@ -172,7 +177,8 @@ encodeFile f =
     then putStrLn "Cannot encode .code files"
     else do
       let outFilePath = replaceExtension f "code"
-      undefined
+      content <- readFile f
+      writeFile outFilePath content
 
 {-
 Finally, let's put it all together into a "main" function that reads in
