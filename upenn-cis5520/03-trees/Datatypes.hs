@@ -100,7 +100,13 @@ will arrive by "two day shipping":
 -}
 
 twoBusinessDays :: Day -> Day
-twoBusinessDays d = undefined
+twoBusinessDays Monday = nextWeekday Tuesday
+twoBusinessDays Tuesday = nextWeekday Wednesday
+twoBusinessDays Wednesday = nextWeekday Thursday
+twoBusinessDays Thursday = nextWeekday Friday
+twoBusinessDays Friday = nextWeekday Monday
+twoBusinessDays Saturday = nextWeekday Monday
+twoBusinessDays Sunday = nextWeekday Monday
 
 {-
 Shapes
@@ -306,7 +312,7 @@ Now, rewrite this function using selectors `x` and `y`:
 -}
 
 distFromOrigin' :: Point -> Double
-distFromOrigin' p = undefined
+distFromOrigin' p = sqrt (x p * x p + y p * y p)
 
 {-
 Which version is easier to read? Opinions differ.
@@ -402,7 +408,8 @@ of `head` is not partial like the one for regular lists.)
 -- >>> safeHead oneTwoThree
 -- 1
 safeHead :: IntListNE -> Int
-safeHead = undefined
+safeHead (ISingle n) = n
+safeHead (ICons n _) = n
 
 {-
 We can define functions by recursion on `IntListNE`s too, of course. Write a function
@@ -412,7 +419,8 @@ to calculate the sum of a non-empty list of integers.
 -- >>> sumOfIntListNE oneTwoThree
 -- 6
 sumOfIntListNE :: IntListNE -> Int
-sumOfIntListNE = undefined
+sumOfIntListNE (ISingle n) = n
+sumOfIntListNE (ICons n rest) = n + sumOfIntListNE rest
 
 {-
 Polymorphic Datatypes
@@ -449,7 +457,7 @@ justTrue :: Maybe Bool
 justTrue = Just True
 
 justThree :: Maybe Int
-justThree = undefined
+justThree = Just 42
 
 {-
 A number of other polymorphic datatypes appear in the standard
@@ -516,7 +524,8 @@ We can write simple functions on trees by recursion:
 -- >>> treePlus (Branch 2 Empty Empty) 3
 -- Branch 5 Empty Empty
 treePlus :: Tree Int -> Int -> Tree Int
-treePlus = undefined
+treePlus Empty _ = Empty
+treePlus (Branch n left right) n' = Branch (n + n') (treePlus left n')  (treePlus right n')
 
 {-
 We can accumulate all of the elements in a tree into a list:
@@ -536,7 +545,8 @@ infixOrder (Branch x l r) = infixOrder l ++ [x] ++ infixOrder r
 -- [5,2,1,4,9,7]
 
 prefixOrder :: Tree a -> [a]
-prefixOrder = undefined
+prefixOrder Empty = []
+prefixOrder (Branch n left right) = n : prefixOrder left ++ prefixOrder right
 
 {-
 (NOTE: This is a simple way of defining a tree walk in Haskell, but it is not
