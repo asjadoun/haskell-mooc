@@ -897,7 +897,8 @@ error if it is ever evaluated.
 -}
 
 jn' :: Maybe (Maybe a) -> Maybe a
-jn' = undefined
+jn' Nothing   = Nothing
+jn' (Just ma) = ma
 
 {-
 Lists
@@ -916,7 +917,7 @@ l1 :: [Double]
 l1 = [1.0, 2.0, 3.0, 4.0]
 
 l2 :: [Int]
-l2 = undefined -- make a list of numbers
+l2 = [0,1,2,3] -- make a list of numbers
 
 {-
 Lists can contain structured data...
@@ -930,7 +931,7 @@ l3 = [(1, True), (2, False)]
 -}
 
 l4 :: [[Int]]
-l4 = undefined -- make a list of lists
+l4 = [[],[0,1],[2,3]] -- make a list of lists
 
 {-
 List elements *must* have the same type.
@@ -1141,7 +1142,7 @@ range :: Int -> Int -> [Int]
 \**Step 3**: Define the function. This part is for you to do for your quiz.
 -}
 
-range i j = undefined
+range i j = if i > j then [] else i : range (i+1) j
 
 {-
 \**Step 4**: Run the tests.
@@ -1189,7 +1190,8 @@ lists that have three or more elements.
 -}
 
 isLong :: [a] -> Bool
-isLong = undefined
+isLong (_:_:_) = True
+isLong _       = False
 
 testIsLong :: Test
 testIsLong =
@@ -1349,7 +1351,8 @@ listIncr :: [Int] -> [Int]
 \**Step 3**: Define the function.
 -}
 
-listIncr = undefined
+listIncr [] = []
+listIncr (x:xs) = (x+1) : listIncr xs
 
 {-
 \**Step 4**: Run the tests.
@@ -1384,7 +1387,9 @@ listAdd :: [Int] -> [Int] -> [Int]
 \**Step 3**: Define the function.
 -}
 
-listAdd = undefined
+listAdd [] ys = []
+listAdd xs [] = []
+listAdd (x:xs) (y:ys) = (x+y) : listAdd xs ys
 
 {-
 \**Step 4**: Run the tests.
