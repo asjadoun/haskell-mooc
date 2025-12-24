@@ -74,16 +74,18 @@ allT2 :: Test
 allT2 = getAnd (foldList (fmap And [True, False, True])) ~?= False
 
 instance Semigroup And where
-  (<>) = undefined
+  (<>) (And True) (And True) = And (True)
+  (<>) (And _) (And _) = And (False)
 
 instance Monoid And where
-  mempty = undefined
+  mempty = And (True)
 
 instance Semigroup Or where
-  (<>) = undefined
+  (<>) (Or False) (Or False) = Or False
+  (<>) (Or _) (Or _) = Or True
 
 instance Monoid Or where
-  mempty = undefined
+  mempty = Or False
 
 {-
 Because `And` and `Or` wrap boolean values, we can be sure that our instances
@@ -140,20 +142,33 @@ structure using `foldMap`.
 -}
 
 and :: (Foldable t) => t Bool -> Bool
-and = getAnd . foldMap And
+and ta = getAnd (foldMap And ta)
+-- OR
+-- and = getAnd . foldMap And
 
 {-
 Your job is to define these three related operations
 -}
+-- foldMap :: (Foldable t, Monoid m) => (a -> m) -> t a -> m
 
 or :: (Foldable t) => t Bool -> Bool
-or = undefined
+or ta = getOr (foldMap Or ta)
+-- OR
+-- or = getOr . foldMap Or
 
 all :: (Foldable t) => (a -> Bool) -> t a -> Bool
-all f = undefined
+-- all f = getAnd . foldMap (And . f)
+-- OR
+-- all f ta = getAnd (foldMap (And . f) ta)
+-- OR
+all f ta = getAnd (foldMap (\x -> And (f x)) ta)
 
 any :: (Foldable t) => (a -> Bool) -> t a -> Bool
-any f = undefined
+-- any f = getOr . foldMap (Or . f)
+-- OR
+-- any f ta = getOr (foldMap (Or . f) ta)
+-- OR
+any f ta = getOr (foldMap (\x -> Or (f x)) ta)
 
 {-
 so that the following tests pass
@@ -197,10 +212,28 @@ We *could* make this type an instance of `Foldable` using the definition of
 `foldrTree` from the TreeFolds module.
 
 But, for practice, complete the instance using `foldMap`.
+
+foldMap :: (Foldable t, Monoid m) => (a -> m) -> t a -> m
+foldMap does two things at once:
+  Maps each element of a structure t a into a monoid m
+  Folds (combines) all those monoidal values using the monoid’s (<>) and mempty
+e.g. 
+  mempty <> f x1 <> f x2 <> f x3 <> ...
+-}
+
+-- instance Foldable Tree where
+--   foldMap f Empty = mempty
+--   foldMap f (Branch x left right) = (foldMap f left) <> (f x) <> (foldMap f right)
+
+{-
+Rewriting it using foldr
+
+foldr :: (a -> b -> b) -> b -> t a -> b
 -}
 
 instance Foldable Tree where
-  foldMap = undefined
+  foldr f z Empty = z
+  foldr f z (Branch x left right) = foldr f (f x (foldr f z right)) left
 
 {-
 With this instance, we can for example, verify that all of the sample strings
@@ -215,10 +248,13 @@ Finally, look at the documentation for the
 [Foldable](https://hackage.haskell.org/package/base-4.15.1.0/docs/Data-Foldable.html)
 class and find some other tree operations that we get automatically for
 free.
+we get sum, product, minimum, maximum etc operations for free
 -}
 
 tt2 :: Test
-tt2 = undefined
+-- tt2 = length t1 ~?= 7
+-- tt2 = toList t1 ~?= ["a","b","c","d","e","f","g"]
+tt2 = maximum t1 ~?= "g"
 
 {-
 Oblig-main
@@ -227,5 +263,5 @@ Oblig-main
 
 main :: IO ()
 main = do
-  _ <- runTestTT $ TestList [tm0, anyT1, allT2, monoidAnd, monoidOr, tf0, tf1, tf2, tf3, tf4, tt1]
+  _ <- runTestTT $ TestList [tm0, anyT1, allT2, monoidAnd, monoidOr, tf0, tf1, tf2, tf3, tf4, tt1, tt2]
   return ()

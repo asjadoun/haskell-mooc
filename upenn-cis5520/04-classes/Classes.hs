@@ -184,7 +184,9 @@ by using 'deriving' like we saw in [`Datatypes`](Datatypes.html)!)
 
 instance (Eq a) => Eq (Tree a) where
   (==) :: Tree a -> Tree a -> Bool
-  t1 == t2 = undefined
+  Empty == Empty = True
+  (Branch x left right) == (Branch x' left' right') = (x == x') && (==) left left' && (==) right right'
+  _ == _ = False
 
 {-
 This code tells Haskell how to compare `Tree a`s for equality as long
@@ -847,7 +849,7 @@ See if you can define a Functor instance for this type:
 data Two a = MkTwo a a deriving (Eq, Show, Read, Ord)
 
 instance Functor Two where
-  fmap = undefined
+  fmap f (MkTwo x y) = MkTwo (f x) (f y)
 
 {-
 In the meantime, think about what laws instances of this class should
