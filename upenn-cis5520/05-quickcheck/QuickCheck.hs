@@ -300,7 +300,7 @@ We can write a similar property for the maximum element too.
 
 prop_qsort_nn_max :: [Int] -> Property
 prop_qsort_nn_max xs =
-  undefined
+  not (null xs) ==> last (qsort xs) == maximum xs
 
 {-
 ~~~~~{.haskell}
@@ -386,7 +386,10 @@ lists of distinct elements
 -}
 
 isDistinct :: Eq a => [a] -> Bool
-isDistinct = undefined
+isDistinct xs = check xs
+  where
+    check [] = True
+    check (y:ys) = not (elem y ys) && check ys
 
 prop_qsort_distinct :: [Int] -> Bool
 prop_qsort_distinct = isDistinct . qsort
@@ -802,7 +805,7 @@ Use the operators above to define generators. Make sure that you test them out
 -}
 
 genBool :: Gen Bool
-genBool = undefined
+genBool = QC.choose (True, False)
 
 -- >>> QC.sample' genBool
 

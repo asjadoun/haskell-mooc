@@ -176,15 +176,19 @@ implementation of `minimum` that doesn't satisfy your property.
 (Don't forget to fill in the type signature for `prop_minimum`!)
 -}
 
-prop_minimum :: Ord a => ([a] -> a) -> Undefined
-prop_minimum minimum' = undefined
+prop_minimum :: Ord a => ([a] -> a) -> NonEmptyList a -> Bool 
+prop_minimum minimum' (NonEmpty xs) = 
+    let m = minimum' xs 
+    in m `elem` xs && all (m <=) xs
+
 
 {-
 Also define a buggy implementation that can be identified by your property.
 -}
 
 minimumBug :: Ord a => [a] -> a
-minimumBug = undefined
+minimumBug [] = error "empty list"
+minimumBug xs = maximum xs
 
 {-
 Be careful when testing your code with ghci. Make sure that you provide
@@ -283,18 +287,33 @@ Then implement your definition so that you get the following behavior:
 -}
 
 instance Arbitrary SmallNonNegInt where
-  arbitrary = undefined
-  shrink = undefined
+  -- arbitrary = undefined
+  -- shrink = undefined
+  arbitrary = do
+    n <- choose (0, 1000)
+    return (SmallNonNegInt n)
+
+  shrink (SmallNonNegInt n) =
+    [ SmallNonNegInt n' | n' <- shrink n, n' >= 0, n' <= 1000 ]
 
 {-
 Now, use this type to define your property specifying `replicate`.
 -}
 
-prop_replicate :: (Int -> a -> [a]) -> Undefined
-prop_replicate replicate' = undefined
+-- prop_replicate :: (Int -> a -> [a]) -> Undefined
+-- prop_replicate replicate' = undefined
 
+prop_replicate :: Eq a => (Int -> a -> [a]) -> SmallNonNegInt -> a -> Bool
+prop_replicate replicate' (SmallNonNegInt k) x =
+  let xs = replicate' k x
+  in length xs == k && all (== x) xs
+
+-- replicateBug :: Int -> a -> [a]
+-- replicateBug = undefined
 replicateBug :: Int -> a -> [a]
-replicateBug = undefined
+replicateBug n x
+  | n <= 0    = []
+  | otherwise = replicate (n - 1) x
 
 {-
 -- Part c
@@ -307,14 +326,33 @@ in the result is non-empty and contains only equal elements".  Also
 write a buggy version of `group` that violates both of them.
 -}
 
-prop_group_1 :: Eq a => ([a] -> [[a]]) -> Undefined
-prop_group_1 group' = undefined
+-- prop_group_1 :: Eq a => ([a] -> [[a]]) -> Undefined
+-- prop_group_1 group' = undefined
 
-prop_group_2 :: Eq a => ([a] -> [[a]]) -> Undefined
-prop_group_2 group' = undefined
+-- 1) Concatenation of the result is equal to the argument
+prop_group_1 :: Eq a => ([a] -> [[a]]) -> [a] -> Bool 
+prop_group_1 group' xs = 
+    concat (group' xs) == xs
 
-groupBug :: Eq a => [a] -> [[a]]
-groupBug = undefined
+-- prop_group_2 :: Eq a => ([a] -> [[a]]) -> Undefined
+-- prop_group_2 group' = undefined
+-- 2) Each sublist is non-empty and contains only equal elements
+prop_group_2 :: Eq a => ([a] -> [[a]]) -> [a] -> Bool 
+prop_group_2 group' xs = 
+    all validGroup (group' xs) 
+    where 
+        validGroup [] = False 
+        validGroup (y:ys) = all (== y) ys
+
+-- groupBug :: Eq a => [a] -> [[a]]
+-- groupBug = undefined
+-- Buggy version that violates both properties (e.g. on singleton lists)
+groupBug :: Eq a => [a] -> [[a]] 
+groupBug [] = [] 
+groupBug [x] = [[]] -- loses the element and has an empty sublist 
+groupBug (x:y:xs) 
+    | x == y =  [x,y] : groupBug xs 
+    | otherwise = [x] : groupBug (y:xs)
 
 {-
 -- Part d
@@ -324,17 +362,28 @@ Write two interesting properties about
 Write two different buggy versions, one which violates each property.
 -}
 
-prop_reverse_1 :: ([a] -> [a]) -> Undefined
-prop_reverse_1 reverse' = undefined
+-- prop_reverse_1 :: ([a] -> [a]) -> Undefined
+-- prop_reverse_1 reverse' = undefined
+prop_reverse_1 :: Eq a => ([a] -> [a]) -> [a] -> Bool
+prop_reverse_1 reverse' xs =
+  reverse' (reverse' xs) == xs
 
-prop_reverse_2 :: ([a] -> [a]) -> Undefined
-prop_reverse_2 reverse' = undefined
+-- prop_reverse_2 :: ([a] -> [a]) -> Undefined
+-- prop_reverse_2 reverse' = undefined
+prop_reverse_2 :: ([a] -> [a]) -> [a] -> Bool
+prop_reverse_2 reverse' xs =
+  length (reverse' xs) == length xs
 
+-- reverseBug_1 :: [a] -> [a]
+-- reverseBug_1 = undefined
 reverseBug_1 :: [a] -> [a]
-reverseBug_1 = undefined
+reverseBug_1 []     = []
+reverseBug_1 (_:xs) = reverse xs
 
+-- reverseBug_2 :: [a] -> [a]
+-- reverseBug_2 = undefined
 reverseBug_2 :: [a] -> [a]
-reverseBug_2 = undefined
+reverseBug_2 xs = reverse xs ++ xs   -- doubles the list
 
 {-
 Once you've written all of these, evaluating `main` in GHCi should

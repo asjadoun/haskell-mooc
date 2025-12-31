@@ -130,7 +130,13 @@ same for every path in the tree, so we only need to look at one side.
 -- 2
 blackHeight :: T a -> Int
 blackHeight E = 1
-blackHeight (N c a _ _) = blackHeight a + (if c == B then 1 else 0)
+blackHeight (N c l _ _) 
+  | c == B = 1 + (blackHeight l)
+  | otherwise = 0 + blackHeight l
+
+-- Original implementation
+-- blackHeight E = 1
+-- blackHeight (N c a _ _) = blackHeight a + (if c == B then 1 else 0)
 
 {-
 Valid Red-Black Trees
@@ -190,10 +196,11 @@ bad2 = Root $ N B (N R E 1 E) 2 (N B E 3 E)
 
 {-
 Now define a red-black tree that violates invariant 4.
+i.e. Red nodes have black children
 -}
-
+--
 bad3 :: RBT Int
-bad3 = undefined
+bad3 = Root (N B (N B (N R E 2 E) 3 E) 5 (N B E 7 E))
 
 {-
 Now define a red-black tree that isn't a binary search tree (i.e. the *values*
@@ -201,7 +208,7 @@ stored in the tree are not in strictly increasing order).
 -}
 
 bad4 :: RBT Int
-bad4 = undefined
+bad4 = Root $ N B (N B E 5 E) 2 (N B E 3 E)
 
 {-
 All sample trees, plus the empty tree for good measure.
@@ -282,7 +289,8 @@ isRootBlack (Root t) = color t == B
 -}
 
 consistentBlackHeight :: RBT a -> Bool
-consistentBlackHeight = undefined
+consistentBlackHeight (Root E) = True
+consistentBlackHeight (Root (N c l _ r)) = blackHeight l == blackHeight r
 
 {-
 4. All children of red nodes are black.
@@ -736,7 +744,7 @@ main = IO ()
 main = do
   putStrLn "Testing: isBST_isBST'"
   quickCheck prop_isBST_isBST'
-  putStrLn "Validity tests
+  putStrLn "Validity tests"
   checkValidity
   putStrLn "Metamorphic tests"
   checkMetamorphic
