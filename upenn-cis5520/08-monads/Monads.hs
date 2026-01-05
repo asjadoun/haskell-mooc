@@ -28,7 +28,14 @@ in the tree.
 -}
 
 zipTree :: Tree a -> Tree b -> Tree (a, b)
-zipTree = undefined
+zipTree (Leaf x) (Leaf y) = Leaf (x, y)
+zipTree (Branch left right) (Branch left' right') =
+  Branch (zipTree left left') (zipTree right right')
+
+{-  Above "zipTree" is not total.
+    Because, it only handles the cases where both trees have the same shape. 
+    If the shapes differ (e.g., Leaf vs Branch), pattern matching will fail and cause a runtime error.
+-}
 
 {-
         o                     o                      o
@@ -63,7 +70,12 @@ Let's rewrite it so that the partiality is explicit in the type.
 -}
 
 zipTree1 :: Tree a -> Tree b -> Maybe (Tree (a, b))
-zipTree1 = undefined
+zipTree1 (Leaf x) (Leaf y) = Just (Leaf (x, y))
+zipTree1 (Branch left right) (Branch left' right') = do 
+  l <- zipTree1 left left'
+  r <- zipTree1 right right'
+  Just (Branch l r)
+zipTree1 _ _ = Nothing
 
 {-
 This function is going to be our inspiration for the following development.
@@ -384,7 +396,9 @@ zipTree5 = go
   where
     go (Leaf a) (Leaf b) = return (Leaf (a, b))
     go (Branch l r) (Branch l' r') = do
-      undefined
+      l <- zipTree5 l l'
+      r <- zipTree5 r r'
+      return (Branch l r)
     go _ _ = Nothing
 
 -- >>> testZip zipTree5
@@ -540,13 +554,13 @@ right. )
 -}
 
 fmapMonad :: (Monad m) => (a -> b) -> m a -> m b
-fmapMonad = undefined
+fmapMonad f fa = fa >>= (\a -> return (f a))
 
 pureMonad :: (Monad m) => a -> m a
-pureMonad = undefined
+pureMonad = return
 
 zapMonad :: (Monad m) => m (a -> b) -> m a -> m b
-zapMonad = undefined
+zapMonad ff fa = ff >>= (\f -> fa >>= (\a -> return (f a)))
 
 {-
 Note that `fmapMonad` is called `liftM` and `zapMonad` is called `ap` in the
@@ -589,7 +603,9 @@ should *not* be recursive.
 -- [(1,5),(1,6),(1,7),(2,5),(2,6),(2,7),(3,5),(3,6),(3,7)]
 
 pairs0 :: [a] -> [b] -> [(a, b)]
-pairs0 xs ys = undefined
+pairs0 xs ys = concat (map (\x -> map (\y -> (x,y)) ys) xs)
+-- OR
+-- pairs0 xs ys = [(x,y) | x <- xs, y <- ys]
 
 testPairs :: ([Int] -> [Int] -> [(Int, Int)]) -> Bool
 testPairs ps =
@@ -716,7 +732,7 @@ Rewrite `pairs` using `>>=` and return
 -- >>> pairs2 [1,2,3] [5,6,7]
 -- [(1,5),(1,6),(1,7),(2,5),(2,6),(2,7),(3,5),(3,6),(3,7)]
 pairs2 :: [a] -> [b] -> [(a, b)]
-pairs2 xs ys = undefined
+pairs2 xs ys = xs >>= (\x -> ys >>= (\y -> return (x,y)))
 
 {-
 Rewrite again using do notation
@@ -725,7 +741,10 @@ Rewrite again using do notation
 -- >>> pairs3 [1,2,3] [5,6,7]
 -- [(1,5),(1,6),(1,7),(2,5),(2,6),(2,7),(3,5),(3,6),(3,7)]
 pairs3 :: [a] -> [b] -> [(a, b)]
-pairs3 xs ys = undefined
+pairs3 xs ys = do
+  x <- xs
+  y <- ys
+  return (x,y)
 
 {-
 Make sure that it still works.

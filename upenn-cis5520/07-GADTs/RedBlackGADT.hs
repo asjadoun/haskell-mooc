@@ -171,9 +171,14 @@ Every tree has a color, determined by the following function.
 
 -- | access the color of the tree
 color :: T a -> Color
-color t = case t of
-  (N c _ _ _) -> c
-  E -> B
+color E = B
+color (N c _ _ _) = c
+
+-- OR
+
+-- color t = case t of
+--   (N c _ _ _) -> c
+--   E -> B
 
 {-
 We can also calculate the "black height" of a tree -- i.e. the number of black

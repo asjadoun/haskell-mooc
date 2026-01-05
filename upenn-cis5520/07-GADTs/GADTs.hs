@@ -51,7 +51,7 @@ oe2 = OIf (OIsZero (OAdd (OInt 3) (OInt (-3)))) (OInt 3) (OInt 4)
 
 -- Make an expression for "if true then false else true"
 oe3 :: OExp
-oe3 = undefined
+oe3 = OIf (OBool True) (OBool False) (OBool True)
 
 {-
 And here is an evaluator for these expressions. Note that the result type of
@@ -67,10 +67,14 @@ oevaluate = go
       case (go e1, go e2) of
         (Just (Left i1), Just (Left i2)) -> Just (Left (i1 + i2))
         _ -> Nothing
-    go (OIsZero e1) =
-      undefined
-    go (OIf e1 e2 e3) =
-      undefined
+    go (OIsZero e1) = 
+      case (go e1) of
+        (Just (Left n)) -> Just (Right (n==0)) -- if n==0 then go (OBool True) else go (OBool False)
+        _ -> Nothing
+    go (OIf e1 e2 e3) = 
+      case (go e1) of
+        (Just (Right b)) -> if b then (go e2) else (go e3)
+        _ -> Nothing
 
 {-
 Ugh. That Maybe/Either combination is awkward.
@@ -179,10 +183,16 @@ evaluate = go
     go (GInt i) = i
     go (GBool b) = b
     go (GAdd e1 e2) = go e1 + go e2
-    go (GIsZero e1) =
-      undefined
-    go (GIf e1 e2 e3) =
-      undefined
+    go (GIsZero e1) = go e1 == 0
+    go (GIf e1 e2 e3) = if (go e1) then go e2 else go e3
+
+-- OR
+geval :: forall a. GExp a -> a
+geval (GInt i) = i
+geval (GBool b) = b
+geval (GAdd e1 e2) = geval e1 + geval e2
+geval (GIsZero e) = geval e == 0
+geval (GIf c t f) = if geval c then geval t else geval f
 
 {-
 Not only that, our evaluator is more efficient [1] because it does not need to
@@ -307,7 +317,16 @@ functions. For example, `foldr` works for both empty and nonempty lists.
 -}
 
 foldr' :: (a -> b -> b) -> b -> List f a -> b
-foldr' = undefined
+foldr' _ z Nil = z
+foldr' f z (Cons h tail) = f h (foldr' f z tail)
+
+-- foldr' (+) 0 [1,2,3] evaluates as 1 + (2 + (3 + 0)) = 6
+
+foldl' :: (b -> a -> b) -> b -> List f a -> b
+foldl' _ z Nil = z
+foldl' f z (Cons h tail) = foldl' f (f z h) tail
+
+-- foldl' (+) 0 [1,2,3] evaluates as ((0 + 1) + 2) + 3 = 6
 
 {-
 But the `foldr1` variant (which assumes that the list is nonempty and
@@ -316,7 +335,10 @@ nonempty.
 -}
 
 foldr1' :: (a -> a -> a) -> List NonEmpty a -> a
-foldr1' = undefined
+foldr1' _ (Cons x Nil) = x
+foldr1' f (Cons x tail@(Cons y ys)) = f x (foldr1' f tail)
+
+--foldr1' (+) [1,2,3] evaluates as 1 + (2 + 3) = 6
 
 {-
 The type of `map` becomes stronger in an interesting way: It says that
@@ -327,7 +349,12 @@ type check. (Though, sadly, it would still type check if we had two
 -}
 
 map' :: (a -> b) -> List f a -> List f b
-map' = undefined
+map' _ Nil = Nil
+map' f (Cons x xs) = Cons (f x) (map' f xs)
+
+toList :: List f a -> [a]
+toList Nil = []
+toList (Cons x xs) = x : toList xs
 
 {-
 For `filter`, we don't know whether the output list will be empty or
@@ -364,15 +391,27 @@ use pattern matching.  For example:
 -}
 
 isNonempty :: OldList a -> Maybe (List NonEmpty a)
-isNonempty = undefined
+isNonempty (OL Nil) = Nothing
+isNonempty (OL xs@(Cons _ _)) = Just xs
 
 {-
 Now we can use `OldList` as the result of `filter'`, with a bit of
 additional pattern matching.
 -}
+--    aux :: List f a -> List f a
 
 filter' :: (a -> Bool) -> List f a -> OldList a
-filter' = undefined
+filter' _ Nil = OL Nil
+filter' p (Cons x xs) =
+  case filter' p xs of
+    OL xs' ->
+      if p x then OL (Cons x xs') else OL xs'
+
+-- OR
+-- filter' _ Nil = OL Nil 
+-- filter' p (Cons x xs) = 
+--   let OL xs' = filter' p xs 
+--   in if p x then OL (Cons x xs') else OL xs'
 
 -- >>> filter' (== 2) (Cons 1 (Cons 2 (Cons 3 Nil)))
 -- OL (Cons 2 Nil)
