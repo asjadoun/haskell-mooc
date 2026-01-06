@@ -874,7 +874,7 @@ Other examples
 
 -- >>> map' (+1) [1,2,3]
 map' :: (a -> b) -> [a] -> [b]
-map' f xs = undefined
+map' f xs = [f x | x <- xs]
 
 {-
 \* Create a list of all pairs where the first component is from the first list,
@@ -884,24 +884,36 @@ map' f xs = undefined
 
 -- >>> firstLess [1,2,3] [1,2,3]
 firstLess :: (Ord a) => [a] -> [a] -> [(a, a)]
-firstLess = undefined
+firstLess xs ys = [(x,y) | x <- xs, y <- ys, x <y]
 
 {-
 Now rewrite `map'` and `firstLess` using do notation (don't forget `guard` above)
 -}
 
+-- >>> map1 (+1) [1,2,3]
+
 map1 :: (a -> b) -> [a] -> [b]
-map1 = undefined
+map1 f xs = do
+  x <- xs
+  return (f x)
+
+-- >>> firstLess1 [1,2,3] [1,2,3]
 
 firstLess1 :: (Ord a) => [a] -> [a] -> [(a, a)]
-firstLess1 xs ys = undefined
+firstLess1 xs ys = do
+  x <- xs
+  y <- ys
+  guard (x < y)
+  return (x,y)
 
 {-
 \* Rewrite `filter`, using a guarded list comprehension.
 -}
 
+-- >>> filter' (<5) [7,3,2,5,1]
+
 filter' :: (a -> Bool) -> [a] -> [a]
-filter' f xs = undefined
+filter' f xs = [x | x <- xs, f x]
 
 {-
 The List Applicative
@@ -926,7 +938,7 @@ at the definition above to see what could makes sense.
 
 -- >>> pairs6 [1,2,3] [1,2,3]
 pairs6 :: [a] -> [b] -> [(a, b)]
-pairs6 xs ys = undefined
+pairs6 xs ys = (,) <$> xs <*> ys
 
 {-
 Once you get `pairs6`, try inlining the definitions of `pure` and `<*>` to see
