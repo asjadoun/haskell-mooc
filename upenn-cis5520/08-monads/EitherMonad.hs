@@ -107,9 +107,10 @@ to be passed to the next computation, via `bind`.
 
 instance Monad (Either a) where
   return :: a2 -> Either a1 a2
-  return = undefined
+  return x = Right x
   (>>=) :: Either a1 a2 -> (a2 -> Either a1 b) -> Either a1 b
-  (>>=) = undefined
+  (>>=) (Left x) _ = Left x
+  (>>=) (Right y) f =  f y
 
 {-
 (In this exercise, there is nothing to do for `Applicative`. We'll define it in terms of `Monad`.)

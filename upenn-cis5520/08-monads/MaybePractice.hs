@@ -12,6 +12,7 @@ import Control.Monad qualified as Monad
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Text.Read qualified as Text
+import Control.Applicative ( Alternative((<|>)) )
 
 {-
 Part 1
@@ -46,7 +47,16 @@ according to the examples below.
 -- Nothing
 
 parseWeather :: Map String String -> Maybe Weather
-parseWeather = undefined
+parseWeather dict = do
+  dayStr <- Map.lookup "day" dict
+  maxTempStr <- Map.lookup "maxTemp" dict
+  minTempStr <- Map.lookup "minTemp" dict
+
+  day <- Text.readMaybe dayStr :: Maybe Int
+  maxTemp <- Text.readMaybe maxTempStr :: Maybe Int
+  minTemp <- Text.readMaybe minTempStr :: Maybe Int
+  
+  return (Weather day maxTemp minTemp)
 
 {-
 Part 2
@@ -68,7 +78,17 @@ One can be defined using `(>>=)` from the `Maybe` monad, and one cannot. Which i
 -- >>> firstJust Nothing Nothing
 -- Nothing
 firstJust :: Maybe a -> Maybe a -> Maybe a
-firstJust = undefined
+firstJust x y = case x of
+  Just _ -> x
+  Nothing -> y
+
+-- using Alternative
+-- firstJust x y = x <|> y
+
+-- pattern match solution
+-- firstJust f@(Just _) _ = f
+-- firstJust Nothing f@(Just _) = f
+-- firstJust _ _ = Nothing
 
 -- | Ensure that both Maybes are 'Just' and retain the first one
 --
@@ -81,4 +101,8 @@ firstJust = undefined
 -- >>> sequenceFirst Nothing Nothing
 -- Nothing
 sequenceFirst :: Maybe a -> Maybe b -> Maybe a
-sequenceFirst = undefined
+sequenceFirst v1 v2 = v2 >>= return v1
+
+-- sequenceFirst v1 v2 = v2 >>= return (v1 >>= (return ))
+
+-- sequenceFirst mx my = mx >>= \x -> my >>= \_ -> return x
