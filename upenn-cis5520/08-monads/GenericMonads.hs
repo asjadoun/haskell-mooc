@@ -9,7 +9,8 @@ module GenericMonads where
 
 import Data.Char qualified as Char
 import Test.HUnit
-import Prelude hiding (mapM, sequence)
+import Text.Read (readMaybe)
+import Prelude hiding (mapM, sequence, sequenceA, liftA, liftA2)
 
 {-
 Generic Monad Operations
@@ -79,36 +80,79 @@ the mapped function can return its value in some monad m.
 -- (b)
 
 foldM :: (Monad m) => (a -> b -> m a) -> a -> [b] -> m a
-foldM = error "foldM: unimplemented"
+-- foldM _ a [] = return a
+-- foldM f a (b:bs) = f a b >>= (\a' -> foldM f a' bs)
+-- OR
+foldM _ a [] = return a
+foldM f a (b:bs) = do
+  a' <- f a b
+  foldM f a' bs
 
 -- (c)
+-- >>> sequence [(Just 1), (Just 3)]
 
 sequence :: (Monad m) => [m a] -> m [a]
-sequence = error "sequence: unimplemented"
+-- sequence [] = return []
+-- sequence (a:as) = do
+--   a'  <- a             -- Extract value 'a' from the first action
+--   as' <- sequence as   -- Recursively sequence the rest of the list
+--   return (a' : as')    -- Cons them together and wrap in 'return'
+-- OR
+sequence [] = return []
+sequence (a:as) = a >>= (\a' -> sequence as >>= (\as' -> return (a' : as')))
 
 -- (d) This one is the Kleisli "fish operator"
 --
 
+-- >>> safeParsePositive "10"
 (>=>) :: (Monad m) => (a -> m b) -> (b -> m c) -> a -> m c
-(>=>) = error ">=>: unimplemented"
+-- (>=>) f g a = do
+--   b <- f a
+--   g b
+
+(>=>) f g a = f a >>= \b -> g b
+
+-- 1. Parse a String into an Int
+parse :: String -> Maybe Int
+parse s = readMaybe s
+
+-- 2. Ensure the Int is positive
+ensurePositive :: Int -> Maybe Int
+ensurePositive n
+  | n > 0     = Just n
+  | otherwise = Nothing
+
+-- 3. Compose them using >=> operator
+-- This creates a function: String -> Maybe Int
+safeParsePositive :: String -> Maybe Int
+safeParsePositive = parse >=> ensurePositive
 
 -- (e)
 
 join :: (Monad m) => m (m a) -> m a
-join = error "join: unimplemented"
+join mma = mma >>= \ma -> ma
+-- OR
+-- join mma = mma >>= id
 
 -- (f) Define the 'liftM' function
 
+-- >>> liftM (+1) (Just 2)
+
 liftM :: (Monad m) => (a -> b) -> m a -> m b
-liftM = error "liftM: unimplemented"
+-- liftM f ma = ma >>= \a -> return (f a)
+-- liftM f ma = (>>=) ma (\a -> return (f a))
+liftM f ma = (>>=) ma (return . f)
 
 -- Thought question: Is the type of `liftM` similar to that of another
 -- function we've discussed recently?
 
 -- (g) And its two-argument version ...
+-- >>> liftM2 (+) (Just 10) (Just 5)
 
 liftM2 :: (Monad m) => (a -> b -> r) -> m a -> m b -> m r
-liftM2 = error "liftM2: unimplemented"
+liftM2 f ma mb = ma >>=
+  \a -> mb >>=
+    \b -> return (f a b)
 
 {-
 -------------------------------------------------------------------------
@@ -122,6 +166,9 @@ a definition that *only* uses members of the `Applicative` (and `Functor`)
 type class. (Again, do not use functions from `Control.Applicative`,
 `Data.Foldable` or `Data.Traversable` in your solution.)
 
+  (<*>) :: f (a -> b) -> f a -> f b
+  (<$>) :: (a -> b) -> f a -> f b
+
 If you provide a definition, you should write test cases that demonstrate that it
 has the same behavior on `List` and `Maybe` as the monadic versions above.
 -}
@@ -129,23 +176,66 @@ has the same behavior on `List` and `Maybe` as the monadic versions above.
 -- NOTE: you will not be able to define all of these, but be sure to test the
 -- ones that you do
 
+-- >>> mapA Just [1,2]
+
+-- >>> mapA (\x -> if x > 0 then Just x else Nothing) [1,2,-1]
+
 mapA :: (Applicative f) => (a -> f b) -> [a] -> f [b]
-mapA = undefined
+mapA _ []     = pure []
+-- mapA f (x:xs) = (:) <$> f x <*> mapA f xs
+-- OR
+mapA f (x:xs) = pure (:) <*> f x <*> mapA f xs
+{-
+Explanation:
+  pure (:) lifts the list constructor (:) into the applicative.
+  Then <*> f x feeds the effectful result of f x to (:).
+  Then <*> mapA f xs feeds the effectful list from the recursive call.
+  Together they form f (x':xs'), i.e. an effectful list.
+-}
 
 foldA :: forall f a b. (Applicative f) => (a -> b -> f a) -> a -> [b] -> f a
 foldA = undefined
 
+-- >>> sequenceA [Just 1, Just 2]
+
 sequenceA :: (Applicative f) => [f a] -> f [a]
-sequenceA = undefined
+-- sequenceA = foldr (\ x -> (<*>) (pure (:) <*> x)) (pure [])
+-- OR
+-- sequenceA = foldr (\ x -> (<*>) ((:) <$> x)) (pure [])
+-- OR
+sequenceA []     = pure []
+sequenceA (x:xs) = pure (:) <*> x <*> sequenceA xs
+-- OR
+-- sequenceA (x:xs) = ((:) <$> x) <*> sequenceA xs
 
 kleisliA :: (Applicative f) => (a -> f b) -> (b -> f c) -> a -> f c
-kleisliA = undefined
+kleisliA = error "cannot be implemented using Applicative/Functor"
 
 joinA :: (Applicative f) => f (f a) -> f a
-joinA = undefined
+joinA = error "cannot be implemented using Applicative/Functor"
+
+-- >>> liftA (+1) (Just 3)
+
+-- >>> liftA (*2) [1,2,3]
 
 liftA :: (Applicative f) => (a -> b) -> f a -> f b
-liftA f x = undefined
+-- liftA f fa = f <$> fa
+-- OR
+liftA f fa = pure f <*> fa
+
+-- >>>  liftA2 (*) [1,2] [10,20]
 
 liftA2 :: (Applicative f) => (a -> b -> r) -> f a -> f b -> f r
-liftA2 f x y = undefined
+-- liftA2 f fa fb = ((pure f) <*> fa) <*> fb
+{-
+This is how it works -
+  pure f                 :: f (a -> b -> r)
+  pure f <*> fa          :: f (b -> r)
+  (pure f <*> fa) <*> fb :: f r
+-}
+liftA2 f fa fb = f <$> fa <*> fb
+{-
+This is how it works -
+  f <$> fa          :: f (b -> r)
+  (f <$> fa) <*> fb :: f r
+-}
