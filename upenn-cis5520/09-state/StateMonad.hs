@@ -127,14 +127,25 @@ of the stored values) and variations of the second type
 type Store = Int
 
 countI :: Tree a -> Int
-countI t = aux t 0 -- start with 0
+countI t = aux t 0 
   where
     aux :: Tree a -> (Store -> Store)
-    aux (Leaf _) = (+ 1) -- we found a leaf
-    aux (Branch t1 t2) = \s ->
-      let s' = aux t1 s -- pass through in
-          s'' = aux t2 s' -- each recursive call
-       in s''
+    aux (Leaf _) = \s -> s+1
+    aux (Branch left right) = \s -> 
+      let
+        s'  = aux left s   -- traverse left tree and store intermediate state in s'
+        s'' = aux right s' -- traverse right tree and store final state in s''
+      in s''
+
+-- Original
+-- countI t = aux t 0 -- start with 0
+--   where
+--     aux :: Tree a -> (Store -> Store)
+--     aux (Leaf _) = (+ 1) -- we found a leaf
+--     aux (Branch t1 t2) = \s ->
+--       let s' = aux t1 s -- pass through in
+--           s'' = aux t2 s' -- each recursive call
+--        in s''
 
 {-
 Once you understand the implementation above, test it on the sample tree
@@ -176,13 +187,29 @@ We can also implement this operation with purely functional code by taking
 the state transformer code above, which always has access to the current
 count as we traverse the tree, and making it return a new tree in the
 process. See if you can figure out how to do this.
+
+data Tree a = Leaf a | Branch (Tree a) (Tree a)
+  deriving (Eq, Show)
 -}
 
 label1 :: Tree a -> Tree (a, Int)
 label1 t = fst (aux t 0)
   where
     aux :: Tree a -> Store -> (Tree (a, Int), Store)
-    aux = undefined
+    aux (Leaf a) = \s -> (Leaf (a, s), s+1)
+    aux (Branch left right) = \s ->
+      let 
+        (lt, s') = aux left s
+        (rt, s'')= aux right s'
+      in (Branch lt rt, s'')
+
+-- OR
+    -- aux (Leaf x)            s = (Leaf (x,s), s+1)
+    -- aux (Branch left right) s =
+    --   let
+    --     (lt, s')  = aux left s
+    --     (rt, s'') = aux right s'
+    --   in (Branch lt rt, s'')
 
 {-
 Once you have completed the implementation, again test it on the sample tree
@@ -261,11 +288,32 @@ of the types below.
 
 returnST :: a -> ST a
 -- returnST :: a -> Store -> (a, Store)
-returnST = undefined
+returnST x = \s -> (x, s)
+-- OR
+-- returnST x s = (x, s)
+-- OR
+-- returnST x = (x, )
 
 bindST :: ST a -> (a -> ST b) -> ST b
 -- bindST :: (Store -> (a,Store)) -> (a -> (Store -> (b, Store))) -> (Store -> (b, Store))
-bindST st f = undefined
+-- bindST st f = \s0 -> let
+--   (a, s1) = st s0
+--   (b, s2) = f a s1
+--   in (b, s2)
+-- OR
+-- bindST st f = \s -> let
+--   (a, s') = st s
+--   in f a s'
+-- OR
+-- bindST st f s = let
+--   (a, s') = st s
+--   in f a s'
+-- OR
+-- bindST st f = \s -> case st s of
+--   (a, s') -> f a s'
+-- OR
+bindST st f s = case st s of
+  (a, s') -> f a s'
 
 {-
 That is, `returnST` converts a value into a state transformer by simply
@@ -340,11 +388,13 @@ S     :: (Store -> (a,Store)) -> ST2 a
 
 instance Monad ST2 where
   return :: a -> ST2 a
-  return x = S (x,) -- this tuple section (x,) is equivalent to \y -> (x,y)
+  return x = S (\s -> (x, s))
+  -- OR
+  -- return x = S (x,) -- this tuple section (x,) is equivalent to \y -> (x,y)
 
   (>>=) :: ST2 a -> (a -> ST2 b) -> ST2 b
-  f >>= g = S $ \s ->
-    let (a, s') = runState f s
+  sa >>= g = S $ \s ->
+    let (a, s') = runState sa s
      in runState (g a) s'
 
 {-
@@ -357,14 +407,30 @@ instance Monad ST2 where
 
 instance Functor ST2 where
   fmap :: (a -> b) -> ST2 a -> ST2 b
-  fmap = liftM
+  -- fmap = liftM
+  -- OR
+  -- fmap f (S g) = S (\s -> let
+  --   (a,s') = g s
+  --   in (f a, s'))
+  -- OR
+  fmap f sa = S (\s -> let 
+    (a,s') = runState sa s
+    in (f a, s'))
 
 instance Applicative ST2 where
   pure :: a -> ST2 a
-  pure = return
+  -- pure = return
+  -- pure x = S (\s -> (x, s))
+  pure x = S(x,)
 
   (<*>) :: ST2 (a -> b) -> ST2 a -> ST2 b
-  (<*>) = ap
+  -- (<*>) = ap
+  -- OR
+  (<*>) sf sa = S(\s -> let
+    (a,s') = runState sa s
+    (f,s'')= runState sf s'
+    in (f a, s')
+    )
 
 {-
 Now, let's rewrite the tree labeling function with the `ST2`
@@ -388,8 +454,26 @@ straightforward to define our tree labeling function.
 -}
 
 mlabel :: Tree a -> ST2 (Tree (a, Int))
-mlabel (Leaf x) = undefined -- use `getST2` and `putST2` here
-mlabel (Branch t1 t2) = undefined
+mlabel (Leaf x) = -- use `getST2` and `putST2` here
+  getST2 >>= (\s -> 
+    putST2 (s+1) >>= (\_ -> 
+      return (Leaf (x, s))
+      ))
+mlabel (Branch t1 t2) = 
+  mlabel t1 >>= (\t1' -> 
+    mlabel t2 >>= (\t2' -> 
+      return (Branch t1' t2')
+      ))
+
+mlabelDo :: Tree a -> ST2 (Tree (a, Int))
+mlabelDo (Leaf x) = do
+  s <- getST2
+  putST2 (s+1)
+  return (Leaf (x, s))
+mlabelDo (Branch t1 t2) = do
+  t1' <- mlabelDo t1
+  t2' <- mlabelDo t2
+  return (Branch t1' t2')
 
 {-
 Try to implement `mlabel` both with and without `do`-notation.
@@ -403,8 +487,13 @@ simply applying the resulting state transformer with zero as
 the initial state, and then discarding the final state:
 -}
 
+-- >>> label tree
+-- Branch (Branch (Leaf ('a',0)) (Leaf ('b',1))) (Leaf ('c',2))
+
 label :: Tree a -> Tree (a, Int)
-label t = undefined
+-- label t = fst (runState (mlabel t) 0 )
+-- OR point-free version
+label = fst . ($ 0) . runState . mlabel
 
 {-
 For example, `label tree` gives our expected result:
@@ -447,16 +536,27 @@ operations.
 Now, the labeling function with our generic `State` monad is straightforward.
 -}
 
-mlabelS :: Tree t -> S.State Int (Tree (t, Int))
-mlabelS t = case t of
-  (Leaf x) -> do
-    c <- S.get
-    S.modify (+ 1)
-    return (Leaf (x, c))
-  (Branch t1 t2) -> do
-    t1' <- mlabelS t1
-    t2' <- mlabelS t2
-    return (Branch t1' t2')
+mlabelS :: Tree a -> S.State Int (Tree (a, Int))
+mlabelS (Leaf x) = do
+  s <- S.get
+  S.modify (+1)
+  return (Leaf (x,s))
+mlabelS (Branch t1 t2) = do
+  t1' <- mlabelS t1
+  t2' <- mlabelS t2
+  return (Branch t1' t2')
+
+-- Original
+
+-- mlabelS t = case t of
+--   (Leaf x) -> do
+--     c <- S.get
+--     S.modify (+ 1)
+--     return (Leaf (x, c))
+--   (Branch t1 t2) -> do
+--     t1' <- mlabelS t1
+--     t2' <- mlabelS t2
+--     return (Branch t1' t2')
 
 {-
 Easy enough!
