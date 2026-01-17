@@ -49,7 +49,10 @@ instance Monad (State s) where
   return x = S (x,) -- this tuple section (x,) is equivalent to \y -> (x,y)
 
   (>>=) :: State s a -> (a -> State s b) -> State s b
-  st >>= f = undefined
+  st >>= f = S (\s -> 
+    let (x, s') = runState st s  -- Step 1: Run the first computation
+        stB     = f x            -- Step 2: Apply f to get the next State action
+    in runState stB s')          -- Step 3: Run the second action with the new state
 
 {-
 We also define instances for `Functor` and `Applicative`:
@@ -57,13 +60,25 @@ We also define instances for `Functor` and `Applicative`:
 
 instance Functor (State s) where
   fmap :: (a -> b) -> State s a -> State s b
-  fmap = liftM
-
+  fmap f (S g) = S (\s -> let 
+    (a,s') = g s
+    in (f a, s'))
+-- OR
+  -- fmap f sa = S (\s -> let
+  --   (a,s') = runState sa s
+  --   in (f a,s'))
+-- OR
+  -- fmap = liftM
 instance Applicative (State s) where
   pure :: a -> State s a
   pure = return
   (<*>) :: State s (a -> b) -> State s a -> State s b
-  (<*>) = ap
+  (<*>) sf sa = S (\s -> let
+    (a,s')  = runState sa s
+    (f,s'') = runState sf s'
+    in (f a, s''))
+-- OR
+  -- (<*>) = ap
 
 {-
 There are two other ways of evaluating the state monad. The first only
@@ -71,14 +86,18 @@ returns the final result,
 -}
 
 evalState :: State s a -> s -> a
-evalState = undefined
+evalState sa s = let 
+  (a,_) = runState sa s
+  in a
 
 {-
 and the second only returns the final state.
 -}
 
 execState :: State s a -> s -> s
-execState = undefined
+execState sa s = let 
+  (_, s') = runState sa s
+  in s'
 
 {-
 Accessing and Modifying State
@@ -116,7 +135,19 @@ a new state *inside* a state monad. The old state is thrown away.
 -}
 
 modify :: (s -> s) -> State s ()
-modify = undefined
+modify f = S (\s -> let 
+  s' = f s
+  in ((), s'))
+-- OR
+-- modify f = S (\s -> ((), f s))
+
+test :: State Int () 
+test = do 
+  modify (+1) 
+  modify (+1)
+
+-- >>> runState test 0
+-- ((),2)
 
 {-
 [1]: http://hackage.haskell.org/packages/archive/mtl/latest/doc/html/Control-Monad-State-Lazy.html#g:2
