@@ -174,3 +174,9 @@ sepBy p sep = sepBy1 p sep <|> pure []
 --   Returns a list of values returned by @p@.
 sepBy1 :: Parser a -> Parser sep -> Parser [a]
 sepBy1 p sep = (:) <$> p <*> many (sep *> p)
+
+endBy1 :: Parser a -> Parser sep -> Parser [a]
+endBy1 p sep = (:) <$> (p <* sep) <*> many (p <* sep)
+
+endBy ::  Parser a -> Parser sep -> Parser [a]
+endBy p sep = endBy1 p sep <|> pure []
