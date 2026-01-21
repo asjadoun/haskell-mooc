@@ -12,7 +12,7 @@ import Control.Monad (ap, liftM)
 import Data.Function ((&))
 import Data.Kind (Type)
 import State (State)
-import State qualified as S
+import qualified State as S
 
 {-
 How do we use *multiple* monads at once?
@@ -42,6 +42,7 @@ data Expr
 Our first evaluator is *unsafe*. It could cause an error
 when we run it.
 -}
+-- >>> eval (Val 2)
 
 eval :: Expr -> Int
 eval (Val n) = n
@@ -108,7 +109,10 @@ errorS y m = "Error dividing " ++ show y ++ " by " ++ show m
 -- | exception-throwing evaluator
 evalEx :: Expr -> Either String Int
 evalEx (Val n) = return n
-evalEx (Div x y) = undefined
+evalEx (Div x y) = do 
+  x' <- evalEx x
+  y' <- evalEx y
+  if y' == 0 then Left (errorS x' y') else Right (x' `div` y')
 
 {-
 When we call this evaluator, we'll format its result into a string using the
@@ -138,7 +142,7 @@ This version should return `Result: 42` for the `ok` term and
 -- >>> goEx ok
 -- "Result: 42"
 
--- >>> goEx err
+-- >>> c
 -- "Raise: Error dividing Val 1 by Div (Val 2) (Val 3)"
 
 {-
