@@ -205,7 +205,7 @@ passing the "last action" along.
 
 writeComputation :: String -> Action -> Action
 writeComputation "" k = k
-writeComputation (c : cs) k = undefined
+writeComputation (c : cs) k = writeComputation cs (Atomic (putChar c >> return k))
 
 {-
 For example, we can put actions together by successively passing them in
@@ -229,7 +229,7 @@ sequenceComputation ::
   (Action -> Action) ->
   (Action -> Action) ->
   (Action -> Action)
-sequenceComputation = undefined
+sequenceComputation m1 m2 k = m1 (m2 k)
 
 {-
 For example, here is the `hello5520` sequence above:
@@ -261,7 +261,9 @@ that character to the next action.
 -}
 
 readComputation :: (Char -> Action) -> Action
-readComputation = undefined
+readComputation f = Atomic $ do
+  c <- getChar
+  return $ f c
 
 {-
 So, to be polymorphic over the result type of the action, we would like our
@@ -279,7 +281,7 @@ sequenceComp ::
   (a -> (b -> Action) -> Action) -> -- pass to another
   (b -> Action) ->
   Action
-sequenceComp m f = undefined
+sequenceComp m f = \k -> m (\v -> f v k)
 
 {-
 To sequence computations, we first abstract the current continuation
@@ -333,7 +335,7 @@ result to the next one in line.
 -}
 
 returnCompM :: a -> ((a -> Action) -> Action)
-returnCompM x = undefined
+returnCompM x k = k x
 
 {-
 Putting this all together, we can define a monadic type using a newtype:
@@ -388,7 +390,7 @@ interrupted; that is why this is called "atomic".)
 -}
 
 atomic :: IO a -> C a
-atomic = undefined
+atomic ioa = MkC (\k -> Atomic (ioa >>= \v -> return (k v)))
 
 {-
 For thread spawning, there are multiple possible primitives -- we'll present
@@ -455,7 +457,7 @@ over.
 -}
 
 infloop :: (OutputMonad m) => String -> m ()
-infloop = undefined
+infloop s = write s >>= const (infloop s)
 
 {-
 If we run this loop from the ghci toplevel (in the IO monad) we don't get
@@ -615,7 +617,11 @@ instance MsgMonad Mailbox IO where
   sendMsg :: Mailbox -> Msg -> IO ()
   sendMsg v a = IO.writeIORef v (Just a)
   checkMsg :: Mailbox -> IO (Maybe Msg)
-  checkMsg = undefined
+  checkMsg v = do
+    x <- IO.readIORef v
+    case x of
+      Just y -> IO.writeIORef v Nothing >> return (Just y)
+      Nothing -> return Nothing
 
 {-
 With this instance making the operations available in the `IO` monad, we can also lift them into the concurrency monad, using the following instance.
