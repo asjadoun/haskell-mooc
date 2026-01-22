@@ -358,9 +358,11 @@ newtype Mega a = Mega {runMega :: Int -> Either String (a, Int)}
 
 instance Monad Mega where
   return :: a -> Mega a
-  return x = undefined
+  return x = Mega $ \s -> Right (x, s)
   (>>=) :: Mega a -> (a -> Mega b) -> Mega b
-  ma >>= fmb = undefined
+  ma >>= fmb = Mega $ \s -> case runMega ma s of
+    Left err -> Left err
+    Right (a, s') -> runMega (fmb a) s'
 
 instance Applicative Mega where
   pure = return
@@ -371,11 +373,11 @@ instance Functor Mega where
 
 instance MonadError String Mega where
   throwError :: String -> Mega a
-  throwError str = undefined
+  throwError str = Mega $ \_ -> Left str
 
 instance MonadState Int Mega where
-  get = undefined
-  put x = undefined
+  get = Mega $ \s -> Right (s, s)
+  put x = Mega $ \_ -> Right ((), x)
 
 {-
 Finally, once we have a Mega monad, we can run it and display the result.
@@ -519,13 +521,13 @@ instance (Monad m) => MonadState s (StateT s m) where
   get = MkStateT getIt
     where
       getIt :: s -> m (s, s)
-      getIt s = undefined
+      getIt s = return (s, s)
 
   put :: s -> StateT s m ()
   put s = MkStateT putIt
     where
       putIt :: s -> m ((), s)
-      putIt _ = undefined
+      putIt _ = return ((), s)
 
 {-
 Where are we now?
@@ -692,8 +694,14 @@ any other.
 newtype Id a = MkId a deriving (Show)
 
 instance Monad Id where
-  return x = undefined
-  (MkId p) >>= f = undefined
+  return = MkId
+  (MkId p) >>= f = MkId (f p & \(MkId r) -> r)
+{-
+unfold the definition of >>= here:
+1. f p: The function f is applied to the unwrapped value p. Here p is type of a i.e. p :: Id a
+2. & \(MkId r) -> r: This part unwraps the result of f p. Since f returns something of type Id, we need to extract the raw value r inside it.
+3. MkId (...): Finally, the whole thing is wrapped back into a new MkId.
+-}
 
 instance Applicative Id where
   pure = return
