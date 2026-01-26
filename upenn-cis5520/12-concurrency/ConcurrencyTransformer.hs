@@ -152,7 +152,9 @@ instance Monad TraceIO where
   return :: a -> TraceIO a
   return = Done
   (>>=) :: TraceIO a -> (a -> TraceIO b) -> TraceIO b
-  (>>=) = undefined
+  (>>=) (Done a) f = f a
+  (>>=) (Output s tio) f = Output s (tio >>= f)
+  (>>=) (Input inputs) f = Input (\ms -> inputs ms >>= f)
 
 {-
 (As usual, the Applicative and Functor instances can be derived from the
@@ -221,7 +223,7 @@ Now create a test of your own, for a simple IO progam of your own devising.
 -}
 
 test3 :: Test
-test3 = runTraceIO undefined undefined ~?= undefined
+test3 = runTraceIO echo [Just "hello"] ~?= ["hello", "\n"]
 
 -- >>> runTestTT test3
 
@@ -257,9 +259,11 @@ Now, make this new type a monad:
 
 instance (Monad m) => Monad (C m) where
   return :: a -> C m a
-  return x = undefined
+  return a = MkC $ \k -> k a
   (>>=) :: (Monad m) => C m a -> (a -> C m b) -> C m b
-  m >>= f = undefined
+  m >>= f = MkC $ \k -> 
+    runC m $ \a -> 
+      runC (f a) k
 
 instance (Monad m) => Applicative (C m) where
   pure :: (Monad m) => a -> C m a
@@ -303,11 +307,17 @@ this new parameterized concurrency monad.
 
 instance (Input m) => Input (C m) where
   input :: (Input m) => C m (Maybe String)
-  input = undefined
+  input = MkC $ \k ->
+    Atomic $ do
+      ms <- input
+      return (k ms)
 
 instance (Output m) => Output (C m) where
   output :: (Output m) => String -> C m ()
-  output = undefined
+  output s = MkC $ \k -> 
+    Atomic $ do
+      output s 
+      return (k ())
 
 {-
 Let's define and test a *concurrent* program that does IO.
@@ -342,6 +352,12 @@ testWrite = runCTraceIO example [] ~?= ["Hello ", "CIS", "5520"]
 -- Counts {cases = 1, tried = 1, errors = 0, failures = 0}
 
 {-
+newtype C m a = MkC {runC :: (a -> Action m) -> Action m}
+data TraceIO a
+  = Done a
+  | Output String (TraceIO a)
+  | Input (Maybe String -> TraceIO a)
+
 Write your own example of a (terminating) concurrent program, and a test
 demonstrating what it does.
 -}
