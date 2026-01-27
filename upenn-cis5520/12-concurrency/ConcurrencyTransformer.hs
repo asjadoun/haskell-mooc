@@ -104,9 +104,9 @@ record a *trace* of the execution.
 -}
 
 data TraceIO a
-  = Done a
-  | Output String (TraceIO a)
-  | Input (Maybe String -> TraceIO a)
+  = Done a                             -- The computation has finished and produced a value a
+  | Output String (TraceIO a)          -- The program wants to print a string, then continue with next
+  | Input (Maybe String -> TraceIO a)  -- The program wants to read input
 
 {-
 For example, the trace of the echo program above looks like this:
@@ -249,6 +249,17 @@ data Action m
 
 {-
 We add this new `m` as an additional argument to `C`.
+This is a continuation‑passing style (CPS) monad.
+🌟 Intuition
+Think of C m a as:
+
+“A computation that, when given a function telling it what to do next, will continue the program.”
+
+So runC is like:
+  runC :: C m a -> (a -> Action m) -> Action m
+
+You run a CPS computation by giving it “what to do with the result”.
+
 -}
 
 newtype C m a = MkC {runC :: (a -> Action m) -> Action m}
@@ -340,7 +351,16 @@ Or run it in the *Concurrent* FakeIO monad. (We derive the concurrent fake IO mo
 -}
 
 runCTraceIO :: C TraceIO () -> [Maybe String] -> [String]
-runCTraceIO x inputs = undefined
+{-
+C TraceIO ()
+   → run cma
+       → TraceIO ()
+           → runTraceIO ... inputs
+               → [String]
+-}
+runCTraceIO cma inputs = 
+  let prog = run cma        -- C TraceIO () → TraceIO () 
+  in runTraceIO prog inputs -- TraceIO () → [String]
 
 testWrite :: Test
 testWrite = runCTraceIO example [] ~?= ["Hello ", "CIS", "5520"]
@@ -352,11 +372,24 @@ testWrite = runCTraceIO example [] ~?= ["Hello ", "CIS", "5520"]
 -- Counts {cases = 1, tried = 1, errors = 0, failures = 0}
 
 {-
-newtype C m a = MkC {runC :: (a -> Action m) -> Action m}
+  output :: String -> m ()
+  input :: m (Maybe String) -- only return input if it is ready
+
 data TraceIO a
   = Done a
   | Output String (TraceIO a)
   | Input (Maybe String -> TraceIO a)
+
+runTraceIO :: TraceIO () -> [Maybe String] -> [String]
+
+data Action m
+  = Atomic (m (Action m)) -- an atomic computation, returning a new action
+  | Fork (Action m) (Action m) -- create a new thread
+  | Stop -- terminate this thread
+
+newtype C m a = MkC {runC :: (a -> Action m) -> Action m} -- This is a continuation‑passing style (CPS) monad.
+
+runCTraceIO :: C TraceIO () -> [Maybe String] -> [String]
 
 Write your own example of a (terminating) concurrent program, and a test
 demonstrating what it does.
